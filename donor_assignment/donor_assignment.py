@@ -1,12 +1,23 @@
-bam_path = 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam'
-vcf_path = 'gs://landerlab-vcf/CIRM_plus_15donors/merged_GTex_iPSCORE_CIRM.vcf.gz'
+import argparse
 
-workspace_bucket = 'fc-secure-be53f2e7-3be8-4c69-b217-9903a3210729'
+parser = argparse.ArgumentParser(description="Run donor assignment using google batch")
+parser.add_argument("bam_path", type=str)
+parser.add_argument("vcf_path", type=str)
+parser.add_argument("res_workspace_bucket", type=str)
+parser.add_argument("project_name", type=str)
+parser.add_argument("project_region", type=str)
+args = parser.parse_args()
+
+
+bam_path = args.bam_path # e.g. 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam'
+vcf_path = args.vcf_path # e.g 'gs://landerlab-vcf/CIRM_plus_15donors/merged_GTex_iPSCORE_CIRM.vcf.gz'
+
+workspace_bucket = args.res_workspace_bucket # e.g. 'fc-secure-be53f2e7-3be8-4c69-b217-9903a3210729'
 temp_path = f'gs://{workspace_bucket}/temp_path'
 results_path = f'gs://{workspace_bucket}/results_path/donor_assignment'
 
-project_name = 'nnfc-hgrm'
-project_region = 'us-central1'
+project_name = args.project_name # e.g. 'nnfc-hgrm'
+project_region = args.project_region # e.g. 'us-central1'
 
 
 import tempfile

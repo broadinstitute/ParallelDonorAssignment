@@ -1,4 +1,4 @@
-workflow donor_assign{
+workflow donor_assign {
     call generate_regions
     output {
         Array[String] regions_list = generate_regions.regions_list
@@ -8,6 +8,7 @@ workflow donor_assign{
 task generate_regions {
     input {
         String BAM_PATH
+        String docker_image = 'http://us.gcr.io/landerlab-atacseq-200218/donor_assign:latest'
     }
     command {
         # BRAM python code? > list_of_regions
@@ -51,6 +52,12 @@ task generate_regions {
     }
     output {
         Array[String] regions_list = read_lines("list_of_regions.txt")
+    }
+
+    runtime {
+        docker: docker_image
+        cpu: 4
+        memory: 32GB
     }
 
     # scatter(r in regions){

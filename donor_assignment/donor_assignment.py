@@ -285,6 +285,9 @@ class count_variants_on_region:
             vcf_fetch = vcf.fetch(region=region)
         except:
             vcf_fetch = vcf.fetch(region=region.replace('chr', ''))
+        
+        # this should store the read's position and if it's ref or alt
+        # might need to include alt as well in self.variants ??
         for vcf_line in vcf_fetch:
             pos, ref, alts = vcf_line.pos, vcf_line.ref, vcf_line.alts
             self.variants[pos] = ref
@@ -304,6 +307,7 @@ class count_variants_on_region:
                 continue
 
             for read_idx, locus in bam_line.get_aligned_pairs(matches_only=True):
+            # see if a read overlaps a snp site, and if it does print out what you read (location of the snp overlap, base that was read, barcode umi etc)
                 locus += 1 # AlignmentFile is 0-based while VariantFile is 1-based
                 if not locus in self.variants:
                     continue

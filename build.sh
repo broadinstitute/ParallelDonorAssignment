@@ -24,8 +24,8 @@ fi
 VERSION=${BRANCH}v${NCOMMIT}
 
 # build method docker
-docker build -t getzlab/$METHOD_NAME:${VERSION} ${EXTRA_DOCKER_BUILD_ARGS} ${DOCKER_BUILD_PATH}
+docker build -t landerlab/$METHOD_NAME:${VERSION} ${EXTRA_DOCKER_BUILD_ARGS} ${DOCKER_BUILD_PATH}
 
 # push method docker
-docker tag getzlab/$METHOD_NAME:${VERSION} us.gcr.io/landerlab-atacseq-200218/$METHOD_NAME:${VERSION}
-docker push gcr.io/landerlab-atacseq-200218/$METHOD_NAME:${VERSION}
+docker tag landerlab/$METHOD_NAME:${VERSION} us.gcr.io/landerlab-atacseq-200218/$METHOD_NAME:${VERSION}
+docker push us.gcr.io/landerlab-atacseq-200218/$METHOD_NAME:${VERSION}

@@ -1,3 +1,5 @@
+version 1.0
+
 workflow donor_assign {
     call generate_regions
     output {
@@ -7,19 +9,17 @@ workflow donor_assign {
 
 task generate_regions {
     input {
-        String BAM_PATH
+        String BAI_PATH
         String docker_image = 'http://us.gcr.io/landerlab-atacseq-200218/donor_assign:latest'
     }
     command {
         # BRAM python code? > list_of_regions
         python <<CODE 
         from donor_assignment import *
-        local_bai_path = download_bai_file(${bam_path})
 
-        bai = bamnostic.bai.Bai(local_bai_path)
+        bai = bamnostic.bai.Bai(${BAI_PATH})
         contig_lookup = get_contigs(bam_path)
         total_size = sum([size for _, _, _, _, _, size in iterate_bai_intervals(bai, contig_lookup)])
-        print(f'Total size: {total_size / 1024**3 :.1f} GB')
 
         target_num_jobs = 100
         size_per_job = total_size / target_num_jobs
@@ -57,7 +57,7 @@ task generate_regions {
     runtime {
         docker: docker_image
         cpu: 4
-        memory: 32GB
+        memory: "32GB"
     }
 
     # scatter(r in regions){

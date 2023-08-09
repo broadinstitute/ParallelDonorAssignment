@@ -2,6 +2,7 @@ from donor_assignment import *
 import bamnostic
 import argparse
 import numpy as np
+import pysam
 
 parser = argparse.ArgumentParser(description="Run donor assignment using google batch")
 parser.add_argument("contigs", type=argparse.FileType('r'))
@@ -10,7 +11,7 @@ parser.add_argument("num_splits", type=int)
 args = parser.parse_args()
 
 BAI_PATH = args.BAI_PATH # 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam.bai'
-contig_lookup = args.contigs # header.sam
+contig_lookup = dict(enumerate(pysam.AlignmentFile(args.contigs).references)) # arg.contigs == header.sam
 target_num_jobs = args.num_splits 
 
 

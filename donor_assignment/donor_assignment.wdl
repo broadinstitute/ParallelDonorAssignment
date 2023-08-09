@@ -9,14 +9,14 @@ workflow donor_assign {
 
 task generate_regions {
     input {
-        String BAI_PATH
+        File BAI
         String BAM_PATH
         Int num_splits
         String docker_image = 'http://us.gcr.io/landerlab-atacseq-200218/donor_assign:latest'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
-        python3 split_regions.py header.sam ${BAI_PATH} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
+        python3 split_regions.py header.sam ${BAI} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
 
     }
     output {

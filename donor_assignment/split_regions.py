@@ -1,13 +1,24 @@
 from donor_assignment import *
+import bamnostic
+import argparse
+import numpy as np
 
 parser = argparse.ArgumentParser(description="Run donor assignment using google batch")
+parser.add_argument("contigs", type=argparse.FileType('r'))
+parser.add_argument("BAI_PATH", type=str)
+parser.add_argument("num_splits", type=int)
+args = parser.parse_args()
+
+BAI_PATH = args.BAI_PATH # 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam.bai'
+contig_lookup = args.contigs # header.sam
+target_num_jobs = args.num_splits 
 
 
-bai = bamnostic.bai.Bai(${BAI_PATH})
-contig_lookup = get_contigs(bam_path)
+bai = bamnostic.bai.Bai(BAI_PATH)
+# contig_lookup = get_contigs(bam_path)
 total_size = sum([size for _, _, _, _, _, size in iterate_bai_intervals(bai, contig_lookup)])
 
-target_num_jobs = 100
+# target_num_jobs = 100
 size_per_job = total_size / target_num_jobs
 size_done = 0
 regions_per_thread = [[]]

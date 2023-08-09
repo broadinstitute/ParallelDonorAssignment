@@ -1,0 +1,10 @@
+version: 0.1
+workflows:
+   - name: "donor_assign"
+     subclass: WDL
+     primaryDescriptorPath: donor_assignment/donor_assignment.wdl
+     filters: 
+        branches: 
+          - main
+        tags: 
+          - /.*/

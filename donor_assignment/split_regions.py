@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import pysam
 
-parser = argparse.ArgumentParser(description="Run donor assignment using google batch")
+parser = argparse.ArgumentParser(description="Split the BAM file into equal parts")
 parser.add_argument("contigs", type=argparse.FileType('r'))
 parser.add_argument("BAI_PATH", type=str)
 parser.add_argument("num_splits", type=int)

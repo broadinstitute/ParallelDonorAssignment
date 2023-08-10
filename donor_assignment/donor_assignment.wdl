@@ -68,7 +68,7 @@ task count_region {
         ## point the HTS ENV variable to that file
         export HTS_AUTH_LOCATION="token.txt"
         samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} ${region}
-        bcftools view -O z -o region.vcf.gz ${VCF} ${region}
+        bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
         ls -l region.bam region.vcf.gz
     }
 

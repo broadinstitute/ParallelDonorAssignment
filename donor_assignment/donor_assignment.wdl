@@ -1,4 +1,4 @@
-version 1.1
+version 1.0
 
 workflow donor_assign {
     call generate_regions

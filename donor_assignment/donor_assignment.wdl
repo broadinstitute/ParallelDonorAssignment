@@ -32,7 +32,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.2'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.3'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -51,10 +51,11 @@ task generate_regions {
 }
 
 task count_region {
-    input{
+    input {
         File BAI
         String BAM_PATH
         String region
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.3'
     }
 
     command {
@@ -65,6 +66,12 @@ task count_region {
         export HTS_AUTH_LOCATION="token.txt"
         samtools view -X ${BAI} -b ${BAM_PATH} -o region.bam region
         ls -l region.bam
+        echo $GOOGLE_APPLICATION_CREDENTIALS
+    }
 
+    runtime {
+        docker: docker_image
+        cpu: 4
+        memory: "32GB"
     }
 }

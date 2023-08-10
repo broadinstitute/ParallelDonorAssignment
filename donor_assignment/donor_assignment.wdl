@@ -19,7 +19,7 @@ workflow donor_assign {
             input:
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
-                region = region
+                region = region,
                 VCF_PATH = "~{VCF}"
         }
     }

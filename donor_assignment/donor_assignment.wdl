@@ -32,7 +32,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.3'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.4'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -55,7 +55,7 @@ task count_region {
         File BAI
         String BAM_PATH
         String region
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.3'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.4'
     }
 
     command {

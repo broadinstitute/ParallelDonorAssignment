@@ -5,6 +5,7 @@ workflow donor_assign {
         File BAI
         File BAM
         Int num_splits
+        File VCF
     }
     call generate_regions {
         input:
@@ -19,6 +20,7 @@ workflow donor_assign {
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
                 region = region
+                VCF_PATH = "~{VCF}"
         }
     }
 
@@ -55,6 +57,7 @@ task count_region {
         File BAI
         String BAM_PATH
         String region
+        String VCF_PATH
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.4'
     }
 
@@ -64,9 +67,9 @@ task count_region {
         gcloud auth print-access-token > token.txt
         ## point the HTS ENV variable to that file
         export HTS_AUTH_LOCATION="token.txt"
-        samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} region
-        ls -l region.bam
-        echo $GOOGLE_APPLICATION_CREDENTIALS
+        samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} ${region}
+        bcftools view -O z -o region.vcf.gz ${VCF} ${region}
+        ls -l region.bam region.vcf.gz
     }
 
     runtime {

@@ -1,8 +1,8 @@
-version: 1.1
+version: 1.2
 workflows:
    - name: "donor_assign"
      subclass: WDL
-     primaryDescriptorPath: donor_assignment/donor_assignment.wdl
+     primaryDescriptorPath: /donor_assignment/donor_assignment.wdl
      filters: 
         branches: 
           - main

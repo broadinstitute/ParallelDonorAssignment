@@ -70,7 +70,7 @@ def main():
     with open('list_of_regions.txt', 'w') as fh:  
         for region in regions_per_thread:
             region = region[0]
-            fh.write(f"{region[0]}:{region[1]}-{region[2]}" + '\n')
+            fh.write(f"{region[0]}:{region[1]}-{region[2]}\n")
 
 
 if __name__ == '__main__':

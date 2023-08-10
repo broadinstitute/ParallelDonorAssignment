@@ -34,7 +34,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.4'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.5'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -58,7 +58,7 @@ task count_region {
         String BAM_PATH
         String region
         String VCF_PATH
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.4'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.5'
     }
 
     command {
@@ -70,6 +70,7 @@ task count_region {
         samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} ${region}
         bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
         ls -l region.bam region.vcf.gz
+        python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
     }
 
     runtime {

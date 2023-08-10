@@ -16,7 +16,7 @@ task generate_regions {
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
-        python3 /split_regions.py header.sam ${BAI} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
+        python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
 
     }
     output {

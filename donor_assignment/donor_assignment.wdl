@@ -73,6 +73,10 @@ task count_region {
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
     }
 
+    output {
+      File counts = "results.tsv.gz"
+    }
+
     runtime {
         docker: docker_image
         cpu: 4

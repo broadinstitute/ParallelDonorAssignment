@@ -64,7 +64,7 @@ task count_region {
         gcloud auth print-access-token > token.txt
         ## point the HTS ENV variable to that file
         export HTS_AUTH_LOCATION="token.txt"
-        samtools view -X ${BAI} -b ${BAM_PATH} -o region.bam region
+        samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} region
         ls -l region.bam
         echo $GOOGLE_APPLICATION_CREDENTIALS
     }

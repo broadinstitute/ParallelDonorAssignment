@@ -8,3 +8,4 @@ COPY requirements.txt .
 RUN pip3 install --break-system-packages -r requirements.txt
 
 COPY donor_assignment ./donor_assignment
+COPY cisvar ./cisvar

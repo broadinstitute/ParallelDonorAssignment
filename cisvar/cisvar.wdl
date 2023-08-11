@@ -36,6 +36,7 @@ task est_cisvar {
             >&2 echo "Bam file shorter than 1meg - did you run STAR in WASP mode?"
             exit 1;
         fi
+        pip3 install scipy --break-system-packages
         python3 /app/cisvar/cisvar.py ${donor_list} ${VCF} sorted.bam ${min_coverage}
     }
     output {

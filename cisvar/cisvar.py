@@ -127,5 +127,5 @@ with open("donor_weights.txt", "w") as weights_file:
 # for each base with min_coverage, compute Expected, Observed, and Observed_se
 #
 X = allele_counts_ALT.values
-pileup['pred_regularized_ALT_frac'] = (X @ weights).clip(0, 1)
+pileup['pred_regularized_ALT_frac'] = (X @ weights) / 2  # we rescaled weights above
 pileup.to_csv("cisvar_estimates.txt.gz", sep="\t")

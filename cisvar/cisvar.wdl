@@ -29,7 +29,7 @@ task est_cisvar {
         Float vcf_size
     }
 
-    Int disk_size = ceil(bam_size * 2.5)
+    Int disk_size = ceil(bam_size * 2.5) + 25
 
     command {
         set -ex
@@ -55,7 +55,7 @@ task est_cisvar {
         docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.7"
         cpu: 4
         memory: "64GB"
-        disks: "local-disk ~{disk_size}GB HDD"
+        disks: "local-disk ~{disk_size} HDD"
         preemptible: 1
     }
 }

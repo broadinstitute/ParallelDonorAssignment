@@ -6,15 +6,12 @@ workflow cisvar {
         File VCF
     }
 
-    Int bam_size = ceil(size(BAM, "GB"));
-    Int vcf_size = ceil(size(VCF, "GB"));
-
     call est_cisvar {
         input:
         BAM="~{BAM}",
         VCF="~{VCF}",
-        bam_size=bam_size,
-        vcf_size=vcf_size
+        bam_size=ceil(size(BAM, "GB")),
+        vcf_size=ceil(size(VCF, "GB"))
     }
     output {
         File donor_weights = est_cisvar.donor_weights

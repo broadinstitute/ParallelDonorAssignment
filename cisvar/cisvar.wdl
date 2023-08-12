@@ -38,7 +38,7 @@ task est_cisvar {
         gcloud auth print-access-token > token.txt
         export HTS_AUTH_LOCATION="token.txt"
         # extract genotypes from VCF, reordering to donors
-        bcftools -S ${donor_list} -f '%CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n' ${VCF} | gzip -c >  genotypes.txt.gz
+        bcftools query -S ${donor_list} -f '%CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n' ${VCF} | gzip -c >  genotypes.txt.gz
         # renew token & extract and sort reads over variants
         gcloud auth print-access-token > token.txt
         samtools view -d vW:1 ${BAM} -O BAM | samtools sort - -o sorted.bam

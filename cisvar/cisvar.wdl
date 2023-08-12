@@ -55,7 +55,7 @@ task est_cisvar {
         docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.7"
         cpu: 4
         memory: "64GB"
-        disks: "local_disk ~{disk_size}GB HDD"
+        disks: "local-disk ~{disk_size}GB HDD"
         preemptible: 1
     }
 }

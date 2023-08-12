@@ -10,8 +10,8 @@ workflow cisvar {
         input:
         BAM="~{BAM}",
         VCF="~{VCF}",
-        bam_size=ceil(size(BAM, "GB")),
-        vcf_size=ceil(size(VCF, "GB"))
+        bam_size=size(BAM, "GB"),
+        vcf_size=size(VCF, "GB")
     }
     output {
         File donor_weights = est_cisvar.donor_weights
@@ -25,11 +25,11 @@ task est_cisvar {
         String VCF
         File donor_list
         Int min_coverage = 20
-        Int bam_size
-        Int vcf_size
+        Float bam_size
+        Float vcf_size
     }
 
-    Int disk_size = bam_size * 2.5
+    Int disk_size = ceil(bam_size * 2.5)
 
     command {
         set -ex

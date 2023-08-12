@@ -37,11 +37,10 @@ task est_cisvar {
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         gcloud auth print-access-token > token.txt
         export HTS_AUTH_LOCATION="token.txt"
-        # extract genotypes from VCF, reordering to donors
-        bcftools query -S ${donor_list} -f '%CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n' ${VCF} | gzip -c >  genotypes.txt.gz
-        # renew token & extract and sort reads over variants
-        gcloud auth print-access-token > token.txt
-        samtools view -d vW:1 ${BAM} -O BAM | samtools sort - -o sorted.bam
+        # extract genotypes from VCF, reordering to donors, and reads from SAM that overlap variants
+        bcftools query -S ${donor_list} -f '%CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n' ${VCF} | gzip -c >  genotypes.txt.gz &
+        samtools view -d vW:1 ${BAM} -O BAM | samtools sort - -o sorted.bam &
+        wait
         # check file size
         SIZE=$(du -sk sorted.bam | sed "s/[^0-9].*//")
         if ((SIZE<1000)) ; then

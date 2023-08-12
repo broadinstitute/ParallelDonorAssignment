@@ -56,7 +56,7 @@ task est_cisvar {
         File snp_estimates = "cisvar_estimates.txt.gz"
     }
     runtime {
-        docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.7"
+        docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.8"
         cpu: 4
         memory: "64GB"
         disks: "local-disk ~{disk_size} HDD"

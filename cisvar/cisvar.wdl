@@ -29,7 +29,7 @@ task est_cisvar {
         Float vcf_size
     }
 
-    Int disk_size = ceil(bam_size * 2.5) + 25
+    Int disk_size = ceil(bam_size * 2.5 + vcf_size * 2) + 25
 
     command {
         set -ex
@@ -37,6 +37,10 @@ task est_cisvar {
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         gcloud auth print-access-token > token.txt
         export HTS_AUTH_LOCATION="token.txt"
+        # extract genotypes from VCF, reordering to donors
+        bcftools -S ${donor_list} -f '%CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n' ${VCF} | gzip -c >  genotypes.txt.gz
+        # renew token & extract and sort reads over variants
+        gcloud auth print-access-token > token.txt
         samtools view -d vW:1 ${BAM} -O BAM | samtools sort - -o sorted.bam
         # check file size
         SIZE=$(du -sk sorted.bam | sed "s/[^0-9].*//")
@@ -45,7 +49,7 @@ task est_cisvar {
             exit 1;
         fi
         pip3 install scipy --break-system-packages
-        python3 /app/cisvar/cisvar.py ${donor_list} ${VCF} sorted.bam ${min_coverage}
+        python3 /app/cisvar/cisvar.py ${donor_list} genotypes.txt.gz sorted.bam ${min_coverage}
     }
     output {
         File donor_weights = "donor_weights.txt"

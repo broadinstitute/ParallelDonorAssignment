@@ -4,23 +4,19 @@ import pandas as pd
 from scipy.optimize import nnls
 
 donors_file = sys.argv[1]
-VCF = sys.argv[2]
+genotypes = sys.argv[2]
 BAM = sys.argv[3]
 min_coverage = int(sys.argv[4])
 
 #
 # load donors
 #
-donors = ",".join([ln.strip() for ln in open(donors_file)])
+donors = [ln.strip() for ln in open(donors_file)]
 
 #
-# filter to donors
+# load genotypes
 #
-bcftools_proc = subprocess.Popen(f"bcftools query -s {donors} -f %CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n {VCF}".split(' '),
-                                 stdout=subprocess.PIPE)
-
-genotypes = pd.read_table(bcftools_proc.stdout, header=None,
-                          names="chrom pos type REF ALT".split() + donors.split(','))
+genotypes = pd.read_table(genotypes, header=None, names="chrom pos type REF ALT".split() + donors)
 genotypes = genotypes.sort_values("chrom pos".split())
 
 #

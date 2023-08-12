@@ -5,10 +5,16 @@ workflow cisvar {
         File BAM
         File VCF
     }
+
+    Int bam_size = ceil(size(BAM, "GB"));
+    Int vcf_size = ceil(size(VCF, "GB"));
+
     call est_cisvar {
         input:
         BAM="~{BAM}",
-        VCF="~{VCF}"
+        VCF="~{VCF}",
+        bam_size=bam_size,
+        vcf_size=vcf_size
     }
     output {
         File donor_weights = est_cisvar.donor_weights
@@ -22,7 +28,12 @@ task est_cisvar {
         String VCF
         File donor_list
         Int min_coverage = 20
+        Int bam_size
+        Int vcf_size
     }
+
+    Int disk_size = bam_size * 2.5
+
     command {
         set -ex
         ## Work from google buckets directly for faster startup
@@ -46,6 +57,8 @@ task est_cisvar {
     runtime {
         docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.7"
         cpu: 4
-        memory: "32GB"
+        memory: "64GB"
+        disks: disk_size
+        preemptible: 1
     }
 }

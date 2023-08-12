@@ -47,8 +47,9 @@ task generate_regions {
 
     runtime {
         docker: docker_image
-        cpu: 4
-        memory: "32GB"
+        cpu: 1
+        memory: "16GB"
+        preemptible: 1
     }
 }
 
@@ -80,7 +81,8 @@ task count_region {
 
     runtime {
         docker: docker_image
-        cpu: 4
+        cpu: 1
         memory: "32GB"
+        preemptible: 1
     }
 }

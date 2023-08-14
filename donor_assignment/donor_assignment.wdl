@@ -6,6 +6,7 @@ workflow donor_assign {
         File BAM
         Int num_splits
         File VCF
+        File donor_list_file
     }
     call generate_regions {
         input:
@@ -20,12 +21,20 @@ workflow donor_assign {
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
                 region = region,
-                VCF_PATH = "~{VCF}"
+                VCF_PATH = "~{VCF}",
+                donor_list_file = donor_list_file
         }
+    }
+
+    call gather_count_region{
+        input:
+            barcode_log_likelihood = count_region.barcode_log_likelihood
     }
 
     output {
         Array[String] regions_list = generate_regions.regions_list
+        Array[File] region_barcode_log_likelihood_list = count_region.barcode_log_likelihood 
+        File total_barcode_donor_likelihoods = gather_count_region.total_barcode_donor_likelihoods
     }
 }
 
@@ -59,6 +68,7 @@ task count_region {
         String BAM_PATH
         String region
         String VCF_PATH
+        File donor_list_file
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.5'
     }
 
@@ -73,10 +83,11 @@ task count_region {
         bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
+        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${region}
     }
 
     output {
-      File counts = "results.tsv.gz"
+      File barcode_log_likelihood = "barcode_log_likelihood_*.csv.gz"
     }
 
     runtime {
@@ -84,5 +95,29 @@ task count_region {
         cpu: 1
         memory: "32GB"
         preemptible: 1
+    }
+}
+
+
+task gather_count_region {
+    input {
+        Array[File] barcode_log_likelihood
+    }
+
+    command {
+        python <<CODE 
+            barcode_log_likelihood_list = '${sep="," barcode_log_likelihood}'.split(",")
+
+            log_likelihood_df = pd.read_csv(barcode_log_likelihood_list[0], compression='gzip', index_col=0)
+            for file in barcode_log_likelihood_list[1:]:
+                curr_log_likelihood_df = pd.read_csv(file, compression='gzip', index_col=0)
+                log_likelihood_df = log_likelihood_df.add(curr_log_likelihood_df, fill_value=0)
+            
+            log_likelihood_df.to_csv('total_barcode_donor_likelihoods.csv.gz', compression='gzip')
+        CODE
+    }
+
+    output {
+        File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.csv.gz'
     }
 }

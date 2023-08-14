@@ -16,6 +16,7 @@ def main():
     parser.add_argument("reads_on_variants_results", type=str)
     parser.add_argument("donor_list", type=str)
     parser.add_argument("VCF_region", type=str)
+    parser.add_argument("region_name", type=str)
     args = parser.parse_args()
     VCF_str = args.VCF_region
 
@@ -116,7 +117,7 @@ def main():
     regularized_log_probs[donors] += 0.05 / num_donors
     regularized_log_probs[donors] = np.log(regularized_log_probs[donors])
 
-    barcode_log_probs = regularized_log_probs.groupby(['barcode'])[donors].sum()
+    barcode_log_likelihood = regularized_log_probs.groupby(['barcode'])[donors].sum()
 
     #
     # Add in umi counts and snp counts
@@ -124,12 +125,12 @@ def main():
 
     num_snps = umi_probs_position_index.groupby(['barcode']).size()
     num_umis = umi_probs_position_index.reset_index().groupby('barcode')['UMI'].unique().str.len()
-    barcode_log_probs['num_snps'] = num_snps
-    barcode_log_probs['num_umis'] = num_umis
+    barcode_log_likelihood['num_snps'] = num_snps
+    barcode_log_likelihood['num_umis'] = num_umis
 
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood 
     # save file with gzip compression
-    barcode_log_probs.to_csv('barcode_log_probs.csv.gz', compression='gzip')
+    barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{args.region_name}.csv.gz', compression='gzip')
 
 if __name__ == '__main__':
     main()

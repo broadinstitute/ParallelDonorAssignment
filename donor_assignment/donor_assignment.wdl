@@ -84,7 +84,7 @@ task region_donor_log_likelihoods {
     }
 
     output {
-      File barcode_log_likelihood = "barcode_log_likelihood_*.csv.gz"
+      File barcode_log_likelihood = glob("barcode_log_likelihood_*.txt.gz")[0]
     }
 
     runtime {

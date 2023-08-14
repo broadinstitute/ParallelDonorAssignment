@@ -25,7 +25,7 @@ def main():
     # Get variants on reads df, and groupby barcode, umi, and position in the genome
     #
     with gzip.open(args.reads_on_variants_results, 'rt') as file:
-        df = pd.read_table(file, compression='gzip', header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
+        df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
     unique_read_counts = df.groupby(['barcode', 'UMI', 'pos']).sum()
     unique_read_counts['num_reads'] = unique_read_counts.read.str.len()
 
@@ -110,6 +110,7 @@ def main():
 
     # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
     # has the total probability that a barcode/umi came from a donor per donor
+    umi_probs_position_index[donors] = 0.0  # avoid performance warning
     umi_probs_position_index[donors] = temp_probs.values
 
     #
@@ -134,8 +135,7 @@ def main():
     barcode_log_likelihood['num_umis'] = num_umis
 
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
-    # save file with gzip compression
-    barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{args.region_name}.csv.gz', compression='gzip')
+    barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{args.region_name.replace(":", "_")}.txt.gz', sep="\t")
 
 
 if __name__ == '__main__':

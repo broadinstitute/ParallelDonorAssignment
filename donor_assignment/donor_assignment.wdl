@@ -74,6 +74,8 @@ task region_donor_log_likelihoods {
 
     command {
         set -ex
+        env
+        gcloud auth list
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         ## write the GCP token in a file
         gcloud auth print-access-token > token.txt

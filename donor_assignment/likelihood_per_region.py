@@ -110,8 +110,8 @@ def main():
 
     # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
     # has the total probability that a barcode/umi came from a donor per donor
-    umi_probs_position_index[donors] = 0.0  # avoid performance warning
-    umi_probs_position_index[donors] = temp_probs.values
+    umi_probs_position_index = pd.concat([umi_probs_position_index.reset_index(),
+                                          temp_probs[donors]], axis=1).set_index("barcode UMI".split())
 
     #
     # Regularize the donor probabilities
@@ -135,7 +135,8 @@ def main():
     barcode_log_likelihood['num_umis'] = num_umis
 
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
-    barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{args.region_name.replace(":", "_")}.txt.gz', sep="\t")
+    simplified_region = args.region_name.replace(":", "_").replace("-", "_")
+    barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{simplified_region}.txt.gz', sep="\t")
 
 
 if __name__ == '__main__':

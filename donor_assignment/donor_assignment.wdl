@@ -74,13 +74,8 @@ task region_donor_log_likelihoods {
 
     command {
         set -ex
-        env
-        gcloud auth list
-        ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
-        ## write the GCP token in a file
-        gcloud auth print-access-token > token.txt
-        ## point the HTS ENV variable to that file
-        export HTS_AUTH_LOCATION="token.txt"
+        gcloud iam service-accounts keys create sa.json --iam-account `gcloud auth list --filter=status:ACTIVE --format="value(account)"`
+        export GOOGLE_APPLICATION_CREDENTIALS=sa.json
         samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} ${region}
         bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
         ls -l region.bam region.vcf.gz

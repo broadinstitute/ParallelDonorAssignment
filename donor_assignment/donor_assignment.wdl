@@ -43,7 +43,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.5'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.9'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -69,7 +69,7 @@ task count_region {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.5'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.9'
     }
 
     command {
@@ -102,6 +102,7 @@ task count_region {
 task gather_count_region {
     input {
         Array[File] barcode_log_likelihood
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.9'
     }
 
     command {
@@ -119,5 +120,12 @@ task gather_count_region {
 
     output {
         File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.csv.gz'
+    }
+
+    runtime {
+        docker: docker_image
+        cpu: 1
+        memory: "32GB"
+        preemptible: 1
     }
 }

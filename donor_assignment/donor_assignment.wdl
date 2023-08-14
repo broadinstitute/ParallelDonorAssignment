@@ -16,7 +16,7 @@ workflow donor_assign {
     }
 
     scatter (region in generate_regions.regions_list){
-        call count_region {
+        call region_donor_log_likelihoods {
             input:
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
@@ -26,15 +26,15 @@ workflow donor_assign {
         }
     }
 
-    call gather_count_region{
+    call gather_region_donor_log_likelihoods{
         input:
-            barcode_log_likelihood = count_region.barcode_log_likelihood
+            barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood
     }
 
     output {
         Array[String] regions_list = generate_regions.regions_list
-        Array[File] region_barcode_log_likelihood_list = count_region.barcode_log_likelihood 
-        File total_barcode_donor_likelihoods = gather_count_region.total_barcode_donor_likelihoods
+        Array[File] region_barcode_log_likelihood_list = region_donor_log_likelihoods.barcode_log_likelihood 
+        File total_barcode_donor_likelihoods = gather_region_donor_log_likelihoods.total_barcode_donor_likelihoods
     }
 }
 
@@ -62,7 +62,7 @@ task generate_regions {
     }
 }
 
-task count_region {
+task region_donor_log_likelihoods {
     input {
         File BAI
         String BAM_PATH
@@ -99,7 +99,7 @@ task count_region {
 }
 
 
-task gather_count_region {
+task gather_region_donor_log_likelihoods {
     input {
         Array[File] barcode_log_likelihood
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.9'

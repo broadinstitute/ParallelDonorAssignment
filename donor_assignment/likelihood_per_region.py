@@ -60,7 +60,7 @@ def main():
     #
     # filter to donors
     #
-    bcftools_proc = subprocess.Popen(f"/opt/homebrew/bin/bcftools query -s {donors_joined} -f %CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n {VCF_str}".split(' '),
+    bcftools_proc = subprocess.Popen(f"bcftools query -s {donors_joined} -f %CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n {VCF_str}".split(' '),
                                     stdout=subprocess.PIPE)
 
     genotypes = pd.read_table(bcftools_proc.stdout, header=None,

@@ -110,8 +110,9 @@ def main():
 
     # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
     # has the total probability that a barcode/umi came from a donor per donor
-    umi_probs_position_index = pd.concat([umi_probs_position_index.reset_index(),
-                                          temp_probs[donors]], axis=1).set_index("barcode UMI".split())
+    assert (umi_probs_position_index.pos == temp_probs.index).all()
+    tmp = pd.concat([umi_probs_position_index.reset_index(), temp_probs.reset_index(drop=True)], axis=1)
+    umi_probs_position_index = tmp.set_index("barcode UMI".split())
 
     #
     # Regularize the donor probabilities

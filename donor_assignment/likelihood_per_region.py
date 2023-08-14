@@ -69,6 +69,7 @@ def main():
 
     #
     # Generate ref and alt counts dfs
+    # refs_df and alt_df have the total number of reference and alt alleles for each donor at each SNP position
     #
     refs_df = pd.DataFrame(index=genotypes.index, columns=donors)
     alt_df = pd.DataFrame(index=genotypes.index, columns=donors)
@@ -76,6 +77,8 @@ def main():
         refs_df[col] = genotypes[col].str.count('0')
         alt_df[col] = genotypes[col].str.count('1')
 
+    # ref_probs and alt_probs is the proportion of observed alleles that came from that donor -- normalized to the total counts of REF / ALT at that SNP
+    # (it is relative to the total number of reference or alt alleles at that SNP across the donor population)
     ref_probs = refs_df.div(refs_df.sum(axis=1), axis=0)
     alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
     assert ref_probs.index.is_unique
@@ -83,18 +86,24 @@ def main():
     # 
     # Generate a DF (umi_probs_position_index) with a probability a umi came from a donor for each barcode-umi combination 
     # 
+    # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T]) starts with baseline probability base is an ACTG
     umi_probs_position_index = single_base_uniq_reads.copy().reset_index('pos')
     num_donors = len(donors)
     temp_probs = 0 
     for base in 'ACGT':
+        # Indicator vector of shape [umi_probs_position_index.shape[0] (barcode-umi-pos)] x 1
         base_is_ref = (genotypes.REF.loc[umi_probs_position_index.pos] == base).values.reshape((-1,1))
         base_is_alt = (genotypes.ALT.loc[umi_probs_position_index.pos] == base).values.reshape((-1,1))
         base_is_neither = 1 - (base_is_alt + base_is_ref)
 
+        # temp_probs ([pos] x [donor] with positions repeated in umi_probs_position_index ordering)
+        # sum[base] P(donor contributed REF / ALT allele) * Indicator(base is REF / ALT) * P(base | observed bases as SNP) 
         temp_probs += ref_probs.loc[umi_probs_position_index.pos] * base_is_ref * umi_probs_position_index[f'prob_{base}'].values.reshape((-1,1))
         temp_probs += alt_probs.loc[umi_probs_position_index.pos] * base_is_alt * umi_probs_position_index[f'prob_{base}'].values.reshape((-1,1))
         temp_probs += (1 / num_donors) * base_is_neither * umi_probs_position_index[f'prob_{base}'].values.reshape((-1,1))
 
+    # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
+    # has the total probability that a barcode/umi came from a donor per donor
     umi_probs_position_index[donors] = temp_probs.values
 
     #
@@ -118,6 +127,7 @@ def main():
     barcode_log_probs['num_snps'] = num_snps
     barcode_log_probs['num_umis'] = num_umis
 
+    # final output is barcode_log_probs: [barcode] x [donor] loglikelihood 
     # save file with gzip compression
     barcode_log_probs.to_csv('barcode_log_probs.csv.gz', compression='gzip')
 

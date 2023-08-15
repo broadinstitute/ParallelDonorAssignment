@@ -28,6 +28,7 @@ def main():
         df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
     unique_read_counts = df.groupby(['barcode', 'UMI', 'pos']).sum()
     unique_read_counts['num_reads'] = unique_read_counts.read.str.len()
+    print(f"Read data for {len(unique_read_counts)} UMIs.")
 
     #
     # Generate probability table for each base
@@ -68,6 +69,7 @@ def main():
                               names="chrom pos type REF ALT".split() + donors)
     genotypes = genotypes.sort_values("chrom pos".split())
     genotypes = genotypes.set_index(['pos'])
+    print(f"Read genotypes for {len(genotypes)} SNPs and {len(donors)} donors")
 
     #
     # Generate ref and alt counts dfs
@@ -78,6 +80,7 @@ def main():
     for col in donors:
         refs_df[col] = genotypes[col].str.count('0')
         alt_df[col] = genotypes[col].str.count('1')
+    print("Genotypes to counts done.")
 
     # ref_probs and alt_probs is the proportion of observed alleles that came
     # from that donor -- normalized to the total counts of REF / ALT at that
@@ -113,6 +116,7 @@ def main():
     assert (umi_probs_position_index.pos == temp_probs.index).all()
     tmp = pd.concat([umi_probs_position_index.reset_index(), temp_probs.reset_index(drop=True)], axis=1)
     umi_probs_position_index = tmp.set_index("barcode UMI".split())
+    print("UMI per donor probability done")
 
     #
     # Regularize the donor probabilities
@@ -125,6 +129,7 @@ def main():
     regularized_log_probs[donors] = np.log(regularized_log_probs[donors])
 
     barcode_log_likelihood = regularized_log_probs.groupby(['barcode'])[donors].sum()
+    print("Barcode per donor probability done.")
 
     #
     # Add in umi counts and snp counts
@@ -138,6 +143,7 @@ def main():
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
     simplified_region = args.region_name.replace(":", "_").replace("-", "_")
     barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{simplified_region}.txt.gz', sep="\t")
+    print("Done.")
 
 
 if __name__ == '__main__':

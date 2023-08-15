@@ -9,3 +9,5 @@ RUN pip3 install --break-system-packages -r requirements.txt
 
 COPY donor_assignment ./donor_assignment
 COPY cisvar ./cisvar
+COPY monitor_script.sh .
+RUN chmod a+rx /app/monitor_script.sh

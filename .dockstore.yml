@@ -15,5 +15,6 @@ workflows:
      filters:
         branches:
           - main
+          - bram-dev
         tags:
           - /.*/

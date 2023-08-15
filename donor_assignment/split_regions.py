@@ -1,6 +1,7 @@
 import bamnostic
 import argparse
 import pysam
+import numpy as np
 
 
 def include_contig_in_analysis(name):
@@ -29,10 +30,7 @@ def iterate_bai_intervals(bai_file, contig_lookup):
         # position in the compressed file, and the last 16 bits the offset
         # after decompression; we use the compressed file offset
         interval_starts = [interval >> 16 for interval in intervals]
-        start = interval_starts[0]
-        end = interval_starts[-1]
-        size = end - start
-        yield ref_id, intervals, interval_starts, start, end, size
+        yield ref_id, np.array(interval_starts)
 
 
 def main():
@@ -48,33 +46,33 @@ def main():
 
     bai = bamnostic.bai.Bai(BAI_PATH)
     # contig_lookup = get_contigs(bam_path)
-    total_size = sum([size for _, _, _, _, _, size in iterate_bai_intervals(bai, contig_lookup)])
+    total_size = sum([(v[-1] - v[0]) for _, v in iterate_bai_intervals(bai, contig_lookup)])
 
     # target_num_jobs = 100
     size_per_job = total_size / target_num_jobs
     size_done = 0
-    regions_per_thread = [[]]
-    for ref_id, intervals, interval_starts, start, end, size in iterate_bai_intervals(bai, contig_lookup):
-        contig_name = contig_lookup[ref_id]
-        regions_per_thread[-1].append([contig_name, 1, 0])
-        while size_done + size > size_per_job:
-            idx = min([idx for idx, interval_start in enumerate(interval_starts)
-                       if size_done + interval_start - start > size_per_job])
-            locus = idx * bai._LINEAR_INDEX_WINDOW
-            size_done += interval_starts[idx] - start
-            start = interval_starts[idx]
-            size = end - start
-            regions_per_thread[-1][-1][2] = locus
-            regions_per_thread.append([[contig_name, locus, 0]])
-            size_done = 0
-        regions_per_thread[-1][-1][2] = len(intervals) * bai._LINEAR_INDEX_WINDOW
-        size_done += size
-    print(len(regions_per_thread))
+
+    jobs = []
+    for ref_id, intervals in iterate_bai_intervals(bai, contig_lookup):
+        start_interval_idx = 0
+        next_interval_idx = 0
+        while next_interval_idx < len(intervals):
+            chunksize = intervals[next_interval_idx] - intervals[start_interval_idx]
+            if (chunksize > size_per_job):
+                contig_name = contig_lookup[ref_id]
+                jobs.append([contig_name,
+                             start_interval_idx * bai._LINEAR_INDEX_WINDOW, (next_interval_idx + 1) * bai._LINEAR_INDEX_WINDOW,
+                             intervals[start_interval_idx], intervals[next_interval_idx]])
+                start_interval_idx = next_interval_idx
+            else:
+                next_interval_idx += 1
+
+        jobs[-1][2] = next_interval_idx * bai._LINEAR_INDEX_WINDOW
+        jobs[-1][4] = intervals[next_interval_idx - 1]
 
     with open('list_of_regions.txt', 'w') as fh:
-        for region in regions_per_thread:
-            region = region[0]
-            fh.write(f"{region[0]}:{region[1]}-{region[2]}\n")
+        for contig, start, end, byte_start, byte_end in jobs:
+            fh.write(f"{contig}:{start}-{end} bytes:{byte_start}:{byte_end}\n")
 
 
 if __name__ == '__main__':

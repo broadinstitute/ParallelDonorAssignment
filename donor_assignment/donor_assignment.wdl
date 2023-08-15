@@ -108,19 +108,19 @@ task gather_region_donor_log_likelihoods {
 
     command {
         python3 <<CODE 
-            barcode_log_likelihood_list = '${sep="," barcode_log_likelihood}'.split(",")
+        barcode_log_likelihood_list = ${barcode_log_likelihood}
 
-            log_likelihood_df = pd.read_csv(barcode_log_likelihood_list[0], compression='gzip', index_col=0)
-            for file in barcode_log_likelihood_list[1:]:
-                curr_log_likelihood_df = pd.read_csv(file, compression='gzip', index_col=0)
-                log_likelihood_df = log_likelihood_df.add(curr_log_likelihood_df, fill_value=0)
+        log_likelihood_df = pd.read_table(barcode_log_likelihood_list[0], index_col=0)
+        for file in barcode_log_likelihood_list[1:]:
+            curr_log_likelihood_df = pd.read_table(file, index_col=0)
+            log_likelihood_df = log_likelihood_df.add(curr_log_likelihood_df, fill_value=0)
             
-            log_likelihood_df.to_csv('total_barcode_donor_likelihoods.csv.gz', compression='gzip')
+        log_likelihood_df.to_csv('total_barcode_donor_likelihoods.txt.gz', sep="\t")
         CODE
     }
 
     output {
-        File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.csv.gz'
+        File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.txt.gz'
     }
 
     runtime {

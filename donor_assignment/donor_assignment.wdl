@@ -20,7 +20,7 @@ workflow donor_assign {
             input:
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
-                regions = region,
+                regions = regions,
                 VCF_PATH = "~{VCF}",
                 donor_list_file = donor_list_file
         }

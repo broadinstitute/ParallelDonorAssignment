@@ -108,7 +108,7 @@ task gather_region_donor_log_likelihoods {
 
     command {
         python3 <<CODE 
-        barcode_log_likelihood_list = ${barcode_log_likelihood}
+        barcode_log_likelihood_list = [ln.strip() for ln in open("~{write_lines(barcode_log_likelihood)}")]
 
         log_likelihood_df = pd.read_table(barcode_log_likelihood_list[0], index_col=0)
         for file in barcode_log_likelihood_list[1:]:

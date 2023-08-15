@@ -43,7 +43,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.14'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -69,11 +69,12 @@ task region_donor_log_likelihoods {
         String regions
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.14'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
     }
 
     command {
         set -ex
+        /app/monitor_script.sh &
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         ## write the GCP token in a file
         gcloud auth print-access-token > token.txt
@@ -103,7 +104,7 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[File] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.14'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
     }
 
     command {

@@ -17,7 +17,7 @@ def main():
     parser.add_argument("reads_on_variants_results", type=str)
     parser.add_argument("donor_list", type=str)
     parser.add_argument("VCF_region", type=str)
-    parser.add_argument("region_name", type=str)
+    parser.add_argument("regions_name", type=str)
     args = parser.parse_args()
     VCF_str = args.VCF_region
 
@@ -136,7 +136,7 @@ def main():
     barcode_log_likelihood['num_umis'] = num_umis
 
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
-    simplified_region = args.region_name.replace(":", "_").replace("-", "_")
+    simplified_region = args.regions_name.replace(":", "_").replace("-", "_").replace(" ", "_")
     barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{simplified_region}.txt.gz', sep="\t")
 
 

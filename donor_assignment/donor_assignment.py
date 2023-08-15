@@ -83,10 +83,12 @@ def get_contigs(bam_path):
     return contig_lookup
 
 def include_contig_in_analysis(name):
+    if name[:3] == 'chr':
+        name = name[3:]
     try:
-        int(name[3:])
-        return name[:3] == 'chr'
-    except:
+        int(name)
+        return True
+    except ValueError:
         return False
     
 def iterate_bai_intervals(bai_file, contig_lookup):
@@ -276,7 +278,7 @@ class count_variants_on_region:
         self.bam_path = bam_path
         self.vcf_path = vcf_path
         self.variants = {{}}
-            
+
     def load_vcf(self):
         import pysam
         vcf = pysam.VariantFile(self.vcf_path)
@@ -284,7 +286,11 @@ class count_variants_on_region:
         try:
             vcf_fetch = vcf.fetch(region=region)
         except:
-            vcf_fetch = vcf.fetch(region=region.replace('chr', ''))
+            if region.startswith('chr'):
+                region = region[3:]
+            else:
+                region = 'chr' + region
+            vcf_fetch = vcf.fetch(region=region)
         
         # this should store the read's position and if it's ref or alt
         # might need to include alt as well in self.variants ??

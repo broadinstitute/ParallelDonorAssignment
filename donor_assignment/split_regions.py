@@ -2,27 +2,23 @@ import bamnostic
 import argparse
 import pysam
 
-
 def include_contig_in_analysis(name):
+    if name[:3] == 'chr':
+        name = name[3:]
     try:
-        int(name[3:])
-        return name[:3] == 'chr'
+        int(name)
+        return True
     except ValueError:
-        try:
-            int(name)
-            return True
-        except ValueError:
-            return False
-
+        return False
 
 def iterate_bai_intervals(bai_file, contig_lookup):
-    # a BAI file contains a linear index for each contig with 16384bp intervals
+    # a BAI file contains a linear index that divides each contig in 16384bp intervals
     # for example, chr1 is split into 15195 intervals of 16384bp
-    # for each interval, the linear contains the smallest file offset of the
+    # for each interval, the linear index contains the smallest file offset of the
     # alignments that overlap with the interval
     # the value 16384 is available as bai._LINEAR_INDEX_WINDOW
     for ref_id in range(bai_file.n_refs):
-        if not include_contig_in_analysis(contig_lookup[ref_id]):
+        if not include_contig_in_analysis( contig_lookup[ref_id] ):
             continue
         intervals = bai_file.get_ref(ref_id).intervals
         # each array element is int64, with the first 48 bits indicating the
@@ -47,7 +43,6 @@ def main():
     target_num_jobs = args.num_splits
 
     bai = bamnostic.bai.Bai(BAI_PATH)
-    # contig_lookup = get_contigs(bam_path)
     total_size = sum([size for _, _, _, _, _, size in iterate_bai_intervals(bai, contig_lookup)])
 
     # target_num_jobs = 100

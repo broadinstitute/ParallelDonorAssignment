@@ -107,7 +107,7 @@ task gather_region_donor_log_likelihoods {
     }
 
     command {
-        python <<CODE 
+        python3 <<CODE 
             barcode_log_likelihood_list = '${sep="," barcode_log_likelihood}'.split(",")
 
             log_likelihood_df = pd.read_csv(barcode_log_likelihood_list[0], compression='gzip', index_col=0)

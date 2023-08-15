@@ -5,15 +5,8 @@ import numpy as np
 
 
 def include_contig_in_analysis(name):
-    try:
-        int(name[3:])
-        return name[:3] == 'chr'
-    except ValueError:
-        try:
-            int(name)
-            return True
-        except ValueError:
-            return False
+    return (name.isnumeric() or
+            (name[:3] == 'chr' and name[3:].isnumeric()))
 
 
 def iterate_bai_intervals(bai_file, contig_lookup):
@@ -22,10 +15,19 @@ def iterate_bai_intervals(bai_file, contig_lookup):
     # for each interval, the linear contains the smallest file offset of the
     # alignments that overlap with the interval
     # the value 16384 is available as bai._LINEAR_INDEX_WINDOW
+    starts = {}
     for ref_id in range(bai_file.n_refs):
         if not include_contig_in_analysis(contig_lookup[ref_id]):
             continue
-        intervals = bai_file.get_ref(ref_id).intervals
+        starts[ref_id] = bai_file.get_ref(ref_id).intervals[0]
+
+    for ref_id in range(bai_file.n_refs):
+        if not include_contig_in_analysis(contig_lookup[ref_id]):
+            continue
+        intervals = list(bai_file.get_ref(ref_id).intervals)
+        # tack on the start of next contig if available
+        if ref_id + 1 in starts:
+            intervals += [starts[ref_id + 1]]
         # each array element is int64, with the first 48 bits indicating the
         # position in the compressed file, and the last 16 bits the offset
         # after decompression; we use the compressed file offset
@@ -50,7 +52,6 @@ def main():
 
     # target_num_jobs = 100
     size_per_job = total_size / target_num_jobs
-    size_done = 0
 
     jobs = []
     for ref_id, intervals in iterate_bai_intervals(bai, contig_lookup):
@@ -66,13 +67,13 @@ def main():
                 start_interval_idx = next_interval_idx
             else:
                 next_interval_idx += 1
-
+        assert len(jobs)
         jobs[-1][2] = next_interval_idx * bai._LINEAR_INDEX_WINDOW
         jobs[-1][4] = intervals[next_interval_idx - 1]
 
     with open('list_of_regions.txt', 'w') as fh:
         for contig, start, end, byte_start, byte_end in jobs:
-            fh.write(f"{contig}:{start}-{end} bytes:{byte_start}:{byte_end}\n")
+            fh.write(f"{contig}:{start}-{end} bytes:{byte_start}-{byte_end - 1}\n")  # inclusive ranges
 
 
 if __name__ == '__main__':

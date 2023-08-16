@@ -7,7 +7,7 @@ def line_iterator(file):
     for chunk in pd.read_table(file, chunksize=1000, index_col=0):
         for barcode, vals in chunk.iterrows():
             yield barcode
-            yield barcode, vals
+            yield vals
 
 
 def combine_iterators(iters):

@@ -10,6 +10,10 @@ workflow donor_assign {
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
         String git_branch = "bgzblocks"
     }
+
+    Int bam_split_size = floor(size(BAM, "GB") / num_splits)
+    Int vcf_size = floor(size(BAM, "GB"))
+
     call generate_regions {
         input:
             BAI = BAI, 
@@ -27,6 +31,8 @@ workflow donor_assign {
                 region = region,
                 VCF_PATH = "~{VCF}",
                 donor_list_file = donor_list_file,
+                bam_size = bam_split_size,
+                vcf_size = vcf_size,
                 docker_image = docker_image,
                 git_branch = git_branch
         }
@@ -35,6 +41,7 @@ workflow donor_assign {
     call gather_region_donor_log_likelihoods{
         input:
             barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
+            files_size = size(region_donor_log_likelihoods.barcode_log_likelihood, "GB"),
             docker_image = docker_image,
             git_branch = git_branch
     }
@@ -80,11 +87,15 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
+        Int bam_size
+        Int vcf_size
         String docker_image
         String git_branch
-        String chrom_region = sub(region, " .*", "")
-        String file_region = sub(region, ".* bytes:", "")
     }
+
+    String chrom_region = sub(region, " .*", "")
+    String file_region = sub(region, ".* bytes:", "")
+    Int disk_size = bam_size * 2 + vcf_size + 100
 
     command {
         set -ex
@@ -113,6 +124,7 @@ task region_donor_log_likelihoods {
         cpu: 1
         memory: "32GB"
         preemptible: 1
+        disks: "local-disk ~{disk_size} HDD"
     }
 }
 
@@ -120,9 +132,12 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[String] barcode_log_likelihood
+        Float files_size
         String docker_image
         String git_branch
     }
+
+    Int disk_size = ceil(files_size)
 
     command {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
@@ -139,5 +154,6 @@ task gather_region_donor_log_likelihoods {
         cpu: 4
         memory: "32GB"
         preemptible: 1
+        disks: "local-disk ~{disk_size} HDD"
     }
 }

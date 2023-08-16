@@ -75,17 +75,21 @@ task region_donor_log_likelihoods {
     command {
         set -ex
         /app/monitor_script.sh &
+        chrom_region=(echo ${region} | sed "s/ .*//")
+        file_region=(echo ${region} | sed "s/.* bytes://")
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         ## write the GCP token in a file
         gcloud auth print-access-token > token.txt
         ## point the HTS ENV variable to that file
         export HTS_AUTH_LOCATION="token.txt"
-        # these should be fast, no need to worry about access token expiring
-        samtools view -X -b -o region.bam ${BAM_PATH} ${BAI} ${region}
+        # these should be fast, hopefully no need to worry about access token expiring
         bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
+        # extraction BAM subsection with gsutil for stability
+        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
+        gsutil cat -r $file_region ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
-        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${region}
+        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz $chrom_region
     }
 
     output {

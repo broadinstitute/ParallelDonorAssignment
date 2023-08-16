@@ -29,7 +29,7 @@ def combine_iterators(iters):
     # find the lowest pending barcode and emit it
     while pending_barcodes:
         lowest_bc = min(pending_barcodes)
-        lowest_iterators = pending_barcodes.pop(pending_barcodes)
+        lowest_iterators = pending_barcodes.pop(lowest_bc)
         vals = [next(iter) for iter in lowest_iterators]
         yield lowest_bc, sum(vals)
         # re-activate those iters

@@ -40,6 +40,6 @@ if __name__ == '__main__':
     barcode_likelihood_files = sys.argv[1]
     output_file_path = sys.argv[2]
     per_line_iterators = [line_iterator(ln.strip()) for ln in open(barcode_likelihood_files)]
-    with gzip.open(output_file_path, "w") as outf:
+    with gzip.open(output_file_path, "wt") as outf:
         for bc, vals in combine_iterators(per_line_iterators):
             outf.write(bc + "\t" + "\t".join(vals.astype(str).values) + "\n")

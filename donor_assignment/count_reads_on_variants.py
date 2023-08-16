@@ -18,7 +18,7 @@ class count_variants_on_region:
             self.variants[pos] = ref
 
     def count(self, output_file):
-        bamfile = pysam.AlignmentFile(self.bam_path, mode="rb")
+        bamfile = pysam.AlignmentFile(self.bam_path, mode="rb", ignore_truncation=True)
         fid = gzip.open(output_file, 'at')
         for idx, bam_line in enumerate(bamfile):
             if bam_line.mapping_quality != 255:  # unique mapping

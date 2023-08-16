@@ -65,7 +65,7 @@ task generate_regions {
         set -ex
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
-        python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits}
+        python3 -u /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits}
         head -5 list_of_regions.txt > only_five_regions.txt
     }
     output {
@@ -106,13 +106,13 @@ task region_donor_log_likelihoods {
         gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
         gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
 
-        gsutil cp ${VCF_PATH} full.vcf.gz
-        gsutil cp ${VCF_PATH}.tbi full.vcf.gz.tbi
+        gsutil -q cp ${VCF_PATH} full.vcf.gz
+        gsutil -q cp ${VCF_PATH}.tbi full.vcf.gz.tbi
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
 
         ls -l region.bam region.vcf.gz
-        python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
-        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region}
+        python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
+        python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region}
     }
 
     output {
@@ -122,7 +122,7 @@ task region_donor_log_likelihoods {
     runtime {
         docker: docker_image
         cpu: 1
-        memory: "32GB"
+        memory: "64GB"
         preemptible: 1
         disks: "local-disk ~{disk_size} HDD"
     }
@@ -142,7 +142,7 @@ task gather_region_donor_log_likelihoods {
     command {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
-        python3 /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
+        python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
     }
 
     output {

@@ -43,11 +43,13 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
     }
     command {
+        set -ex
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
-        python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
+        python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits}
         head -5 list_of_regions.txt > only_five_regions.txt
     }
     output {
@@ -69,13 +71,14 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
         String chrom_region = sub(region, " .*", "")
         String file_region = sub(region, ".* bytes:", "")
     }
 
     command {
         set -ex
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
         /app/monitor_script.sh &
 
         # use gsutil instead of htslib for stability
@@ -105,22 +108,14 @@ task region_donor_log_likelihoods {
 
 task gather_region_donor_log_likelihoods {
     input {
-        Array[File] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        Array[String] barcode_log_likelihood
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
     }
 
     command {
-        python3 <<CODE 
-        import pandas as pd
-        barcode_log_likelihood_list = [ln.strip() for ln in open("~{write_lines(barcode_log_likelihood)}")]
-
-        log_likelihood_df = pd.read_table(barcode_log_likelihood_list[0], index_col=0)
-        for file in barcode_log_likelihood_list[1:]:
-            curr_log_likelihood_df = pd.read_table(file, index_col=0)
-            log_likelihood_df = log_likelihood_df.add(curr_log_likelihood_df, fill_value=0)
-            
-        log_likelihood_df.to_csv('total_barcode_donor_likelihoods.txt.gz', sep="\t")
-        CODE
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
+        /app/monitor_script.sh &
+        python3 /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
     }
 
     output {
@@ -129,7 +124,7 @@ task gather_region_donor_log_likelihoods {
 
     runtime {
         docker: docker_image
-        cpu: 1
+        cpu: 4
         memory: "32GB"
         preemptible: 1
     }

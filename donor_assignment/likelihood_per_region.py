@@ -142,6 +142,7 @@ def main():
 
     # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
     simplified_region = args.region_name.replace(":", "_").replace("-", "_")
+    barcode_log_likelihood = barcode_log_likelihood.sort_index()
     barcode_log_likelihood.to_csv(f'barcode_log_likelihood_{simplified_region}.txt.gz', sep="\t")
     print("Done.")
 

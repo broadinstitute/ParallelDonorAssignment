@@ -43,7 +43,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -69,24 +69,25 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
+        String chrom_region = sub(region, " .*", "")
+        String file_region = sub(region, ".* bytes:", "")
     }
 
     command {
         set -ex
         /app/monitor_script.sh &
-        chrom_region=(echo ${region} | sed "s/ .*//")
-        file_region=(echo ${region} | sed "s/.* bytes://")
 
         # use gsutil instead of htslib for stability
         gsutil cp ${VCF_PATH} full.vcf.gz
+        gsutil cp ${VCF_PATH}.tbi full.vcf.gz.tbi
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${region}
 
         gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
-        gsutil cat -r $file_region ${BAM_PATH} >> region.bam
+        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
-        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz $chrom_region
+        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${)chrom_region}
     }
 
     output {
@@ -105,7 +106,7 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[File] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
     }
 
     command {

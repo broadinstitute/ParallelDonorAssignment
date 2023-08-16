@@ -7,6 +7,7 @@ workflows:
         branches:
           - main
           - bram-dev
+          - bgzblocks
         tags:
           - /.*/
    - name: "cisvar"
@@ -16,5 +17,6 @@ workflows:
         branches:
           - main
           - bram-dev
+          - bgzblocks
         tags:
           - /.*/

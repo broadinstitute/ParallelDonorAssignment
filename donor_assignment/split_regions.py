@@ -17,8 +17,6 @@ def iterate_bai_intervals(bai_file, contig_lookup):
     # the value 16384 is available as bai._LINEAR_INDEX_WINDOW
     starts = {}
     for ref_id in range(bai_file.n_refs):
-        if not include_contig_in_analysis(contig_lookup[ref_id]):
-            continue
         starts[ref_id] = bai_file.get_ref(ref_id).intervals[0]
 
     for ref_id in range(bai_file.n_refs):
@@ -42,34 +40,38 @@ def main():
     parser.add_argument("num_splits", type=int)
     args = parser.parse_args()
 
-    BAI_PATH = args.BAI_PATH  # 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam.bai'
+    BAI_PATH = args.BAI_PATH  # 'gs://nnfc-hgrm-output/test/possorted_genome_bam.bam.bai'
     contig_lookup = dict(enumerate(pysam.AlignmentFile(args.contigs).references))  # arg.contigs == header.sam
     target_num_jobs = args.num_splits
 
     bai = bamnostic.bai.Bai(BAI_PATH)
-    # contig_lookup = get_contigs(bam_path)
     total_size = sum([(v[-1] - v[0]) for _, v in iterate_bai_intervals(bai, contig_lookup)])
 
-    # target_num_jobs = 100
     size_per_job = total_size / target_num_jobs
 
     jobs = []
     for ref_id, intervals in iterate_bai_intervals(bai, contig_lookup):
+        contig_name = contig_lookup[ref_id]
         start_interval_idx = 0
         next_interval_idx = 0
         while next_interval_idx < len(intervals):
-            chunksize = intervals[next_interval_idx] - intervals[start_interval_idx]
-            if (chunksize > size_per_job):
-                contig_name = contig_lookup[ref_id]
+            chunk_size = intervals[next_interval_idx] - intervals[start_interval_idx]
+            if (chunk_size > size_per_job):
                 jobs.append([contig_name,
-                             start_interval_idx * bai._LINEAR_INDEX_WINDOW, (next_interval_idx + 1) * bai._LINEAR_INDEX_WINDOW,
-                             intervals[start_interval_idx], intervals[next_interval_idx]])
+                             start_interval_idx * bai._LINEAR_INDEX_WINDOW,
+                             next_interval_idx  * bai._LINEAR_INDEX_WINDOW,
+                             intervals[start_interval_idx],
+                             intervals[next_interval_idx]])
                 start_interval_idx = next_interval_idx
             else:
                 next_interval_idx += 1
-        assert len(jobs)
-        jobs[-1][2] = next_interval_idx * bai._LINEAR_INDEX_WINDOW
-        jobs[-1][4] = intervals[next_interval_idx - 1]
+        if start_interval_idx < len(intervals) - 1
+            jobs.append([contig_name,
+                         start_interval_idx * bai._LINEAR_INDEX_WINDOW,
+                         next_interval_idx  * bai._LINEAR_INDEX_WINDOW,
+                         intervals[start_interval_idx],
+                         intervals[next_interval_idx - 1]])
+    assert len(jobs)
 
     with open('list_of_regions.txt', 'w') as fh:
         for contig, start, end, byte_start, byte_end in jobs:

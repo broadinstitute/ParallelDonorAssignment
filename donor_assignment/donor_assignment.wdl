@@ -7,12 +7,16 @@ workflow donor_assign {
         Int num_splits
         File VCF
         File donor_list_file
+        String github_hash
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
     }
     call generate_regions {
         input:
             BAI = BAI, 
             BAM_PATH = "~{BAM}",
             num_splits = num_splits,
+            docker_image = docker_image,
+            github_hash = github_hash
     }
 
     scatter (region in generate_regions.regions_list){
@@ -22,13 +26,16 @@ workflow donor_assign {
                 BAM_PATH = "~{BAM}",
                 region = region,
                 VCF_PATH = "~{VCF}",
-                donor_list_file = donor_list_file
+                donor_list_file = donor_list_file,
+                docker_image = docker_image,
+                github_hash = github_hash
         }
     }
 
     call gather_region_donor_log_likelihoods{
         input:
-            barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood
+            barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
+            docker_image = docker_image
     }
 
     output {
@@ -43,9 +50,14 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        String github_hash
+        String docker_image
     }
     command {
+        git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app
+        cd /app
+        git reset --hard ${github_hash}
+
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
         python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits} # for now, not going to pipe because we have other prints in there ## > list_of_regions.txt
         head -5 list_of_regions.txt > only_five_regions.txt
@@ -69,22 +81,28 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        String github_hash
+        String docker_image
         String chrom_region = sub(region, " .*", "")
         String file_region = sub(region, ".* bytes:", "")
     }
 
     command {
+        git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app
+        cd /app
+        git reset --hard ${github_hash}
+
         set -ex
         /app/monitor_script.sh &
 
         # use gsutil instead of htslib for stability
+        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
+        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
+
         gsutil cp ${VCF_PATH} full.vcf.gz
         gsutil cp ${VCF_PATH}.tbi full.vcf.gz.tbi
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
 
-        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
-        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
         python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region}
@@ -106,7 +124,7 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[File] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.18'
+        String docker_image
     }
 
     command {

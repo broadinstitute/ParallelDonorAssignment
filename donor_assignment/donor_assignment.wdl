@@ -15,12 +15,12 @@ workflow donor_assign {
             num_splits = num_splits,
     }
 
-    scatter (region in generate_regions.regions_list){
+    scatter (regions in generate_regions.regions_list){
         call region_donor_log_likelihoods {
             input:
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
-                region = region,
+                regions = regions,
                 VCF_PATH = "~{VCF}",
                 donor_list_file = donor_list_file
         }
@@ -66,7 +66,7 @@ task region_donor_log_likelihoods {
     input {
         File BAI
         String BAM_PATH
-        String region
+        String regions
         String VCF_PATH
         File donor_list_file
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.15'

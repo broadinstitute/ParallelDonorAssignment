@@ -87,7 +87,7 @@ task region_donor_log_likelihoods {
         gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
-        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${)chrom_region}
+        python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region}
     }
 
     output {

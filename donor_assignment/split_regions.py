@@ -17,7 +17,10 @@ def iterate_bai_intervals(bai_file, contig_lookup):
     # the value 16384 is available as bai._LINEAR_INDEX_WINDOW
     starts = {}
     for ref_id in range(bai_file.n_refs):
-        starts[ref_id] = bai_file.get_ref(ref_id).intervals[0]
+        try:
+            starts[ref_id] = bai_file.get_ref(ref_id).intervals[0]
+        except IndexError:
+            pass  # if ref_id is not in the bai
 
     for ref_id in range(bai_file.n_refs):
         if not include_contig_in_analysis(contig_lookup[ref_id]):

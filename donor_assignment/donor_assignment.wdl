@@ -43,7 +43,7 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.17'
     }
     command {
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
@@ -69,7 +69,7 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.17'
         String chrom_region = sub(region, " .*", "")
         String file_region = sub(region, ".* bytes:", "")
     }
@@ -106,7 +106,7 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[File] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.16'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.17'
     }
 
     command {

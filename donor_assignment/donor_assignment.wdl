@@ -20,7 +20,7 @@ workflow donor_assign {
             input:
                 BAI = BAI,
                 BAM_PATH = "~{BAM}",
-                regions = region,
+                region = region,
                 VCF_PATH = "~{VCF}",
                 donor_list_file = donor_list_file
         }
@@ -77,14 +77,11 @@ task region_donor_log_likelihoods {
         /app/monitor_script.sh &
         chrom_region=(echo ${region} | sed "s/ .*//")
         file_region=(echo ${region} | sed "s/.* bytes://")
-        ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
-        ## write the GCP token in a file
-        gcloud auth print-access-token > token.txt
-        ## point the HTS ENV variable to that file
-        export HTS_AUTH_LOCATION="token.txt"
-        # these should be fast, hopefully no need to worry about access token expiring
-        bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${region}
-        # extraction BAM subsection with gsutil for stability
+
+        # use gsutil instead of htslib for stability
+        gsutil cp ${VCF_PATH} full.vcf.gz
+        bcftools view -O z -o region.vcf.gz full.vcf.gz ${region}
+
         gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
         gsutil cat -r $file_region ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz

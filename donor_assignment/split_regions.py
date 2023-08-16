@@ -65,7 +65,7 @@ def main():
                 start_interval_idx = next_interval_idx
             else:
                 next_interval_idx += 1
-        if start_interval_idx < len(intervals) - 1
+        if start_interval_idx < len(intervals) - 1:
             jobs.append([contig_name,
                          start_interval_idx * bai._LINEAR_INDEX_WINDOW,
                          next_interval_idx  * bai._LINEAR_INDEX_WINDOW,

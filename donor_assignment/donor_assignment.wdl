@@ -7,12 +7,16 @@ workflow donor_assign {
         Int num_splits
         File VCF
         File donor_list_file
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
+        String git_branch = "bgzblocks"
     }
     call generate_regions {
         input:
             BAI = BAI, 
             BAM_PATH = "~{BAM}",
             num_splits = num_splits,
+            docker_image = docker_image,
+            git_branch = git_branch
     }
 
     scatter (region in generate_regions.regions_list){
@@ -22,13 +26,17 @@ workflow donor_assign {
                 BAM_PATH = "~{BAM}",
                 region = region,
                 VCF_PATH = "~{VCF}",
-                donor_list_file = donor_list_file
+                donor_list_file = donor_list_file,
+                docker_image = docker_image,
+                git_branch = git_branch
         }
     }
 
     call gather_region_donor_log_likelihoods{
         input:
-            barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood
+            barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
+            docker_image = docker_image,
+            git_branch = git_branch
     }
 
     output {
@@ -43,11 +51,12 @@ task generate_regions {
         File BAI
         String BAM_PATH
         Int num_splits
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
+        String docker_image
+        String git_branch
     }
     command {
         set -ex
-        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
         python3 /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits}
         head -5 list_of_regions.txt > only_five_regions.txt
@@ -71,23 +80,25 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
+        String docker_image
+        String git_branch
         String chrom_region = sub(region, " .*", "")
         String file_region = sub(region, ".* bytes:", "")
     }
 
     command {
         set -ex
-        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         /app/monitor_script.sh &
 
         # use gsutil instead of htslib for stability
+        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
+        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
+
         gsutil cp ${VCF_PATH} full.vcf.gz
         gsutil cp ${VCF_PATH}.tbi full.vcf.gz.tbi
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
 
-        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
-        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
         ls -l region.bam region.vcf.gz
         python3 /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
         python3 /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region}
@@ -109,11 +120,12 @@ task region_donor_log_likelihoods {
 task gather_region_donor_log_likelihoods {
     input {
         Array[String] barcode_log_likelihood
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
+        String docker_image
+        String git_branch
     }
 
     command {
-        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout bgzblocks)
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         /app/monitor_script.sh &
         python3 /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
     }

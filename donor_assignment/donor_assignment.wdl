@@ -7,7 +7,7 @@ workflow donor_assign {
         Int num_splits
         File VCF
         File donor_list_file
-        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.19'
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "bgzblocks"
     }
 
@@ -142,7 +142,6 @@ task gather_region_donor_log_likelihoods {
     command {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
-        pip3 install fsspec[gcs]
         python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
     }
 

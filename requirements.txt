@@ -3,3 +3,5 @@ numpy
 bamnostic
 pysam
 argparse
+gcsfs
+fsspec[gcs]

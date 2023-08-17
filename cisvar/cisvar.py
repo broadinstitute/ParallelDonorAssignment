@@ -37,7 +37,7 @@ genotypes['chrom pos'.split()].to_csv("positions.txt", sep="\t", header=None, in
 #
 # run pileup
 #
-mpileup_proc = subprocess.Popen(f"samtools mpileup -l positions.txt {BAM}".split(' '),
+mpileup_proc = subprocess.Popen(f"samtools mpileup -l positions.txt --no-output-ins {BAM}".split(' '),
                                 stdout=subprocess.PIPE)
 
 pileup = pd.read_table(mpileup_proc.stdout, header=None,

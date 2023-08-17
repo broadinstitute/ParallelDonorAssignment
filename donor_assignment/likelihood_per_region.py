@@ -143,8 +143,7 @@ def main():
     # Split read info into 100 sorted CBC chunks to save memory
     # and get CBC likelihoods  
     barcode_reads = single_base_uniq_reads.reset_index('barcode')
-    unique_barcodes = barcode_reads.barcode.sort_values().unique()
-    all_cbcs = unique_barcodes.copy()
+    all_cbcs = barcode_reads.barcode.sort_values().unique()
 
     simplified_region = args.region_name.replace(":", "_").replace("-", "_")
     with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "w") as outf:

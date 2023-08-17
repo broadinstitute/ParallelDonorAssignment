@@ -65,12 +65,22 @@ def main():
     parser.add_argument("region_name", type=str)
     args = parser.parse_args()
     VCF_str = args.VCF_region
+    simplified_region_name = args.region_name.replace(":", "_").replace("-", "_")
 
     #
     # Get variants on reads df, and groupby barcode, umi, and position in the genome
     #
     with gzip.open(args.reads_on_variants_results, 'rt') as file:
         df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
+
+    #
+    # check for no reads - write empty dataframe
+    #
+    if len(df) == 0:
+        with open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
+            pd.DataFrame(columns="barcode no_donor".split()).to_csv(outf, compression='gzip', sep="\t")
+            return
+
     unique_read_counts = df.groupby(['barcode', 'UMI', 'pos']).sum()
     unique_read_counts['num_reads'] = unique_read_counts.read.str.len()
     print(f"Read data for {len(unique_read_counts)} UMIs.")
@@ -90,7 +100,6 @@ def main():
     #
     single_base_mask = unique_read_counts.read.map(single_base)
     single_base_uniq_reads = unique_read_counts[single_base_mask].copy()
-    print(single_base_uniq_reads.head())
 
     #
     # calculate general probability that each read is a certain base
@@ -141,8 +150,7 @@ def main():
     #####
 
     num_donors = len(donors)
-    simplified_region = args.region_name.replace(":", "_").replace("-", "_")
-    with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "wb") as outf:
+    with open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
         # Split read info into chunks with all the info for a group of CBCs to
         # save memory, then get per CBC likelihoods and write them out
         barcode_reads = single_base_uniq_reads.reset_index('barcode')

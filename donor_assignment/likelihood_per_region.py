@@ -14,7 +14,7 @@ def generate_barcode_lls(single_base_uniq_reads, genotypes, donors, ref_probs, a
 
     # Generate a DF (umi_probs_position_index) with a probability a umi came
     # from a donor for each barcode-umi combination
-    barcode_reads = single_base_uniq_reads.copy().reset_index('barcode').sort_values('barcode')
+    barcode_reads = single_base_uniq_reads.reset_index('barcode').sort_values('barcode')
     unique_barcodes = barcode_reads.barcode.unique()
     all_cbcs = unique_barcodes.copy()
     with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "w") as outf:

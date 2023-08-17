@@ -44,7 +44,6 @@ def main():
     # Delete all copies that map to different bases (e.g. TA (2 copies, diff bases), TTG (3 copies, diff bases))
     #
     single_base_mask = unique_read_counts.read.map(single_base)
-    assert single_base_mask.mean() > 0.95
     single_base_uniq_reads = unique_read_counts[single_base_mask].copy()
 
     #

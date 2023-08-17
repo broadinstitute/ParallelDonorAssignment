@@ -121,7 +121,7 @@ task region_donor_log_likelihoods {
     runtime {
         docker: docker_image
         cpu: 1
-        memory: "128GB"
+        memory: "256GB"
         preemptible: 2
         disks: "local-disk ~{disk_size} HDD"
     }

@@ -8,6 +8,7 @@ workflows:
           - main
           - bram-dev
           - bgzblocks
+          - split_likelihood_cbcs
         tags:
           - /.*/
    - name: "cisvar"

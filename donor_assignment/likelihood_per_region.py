@@ -9,8 +9,8 @@ def single_base(read):
     return len(set(read)) == 1
 
 def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_probs, alt_probs):
-    """ In chunks of 100 CBCs, gather loglikelihood a cell came from a donor, 
-    and write to the output file"""
+    """ Gather loglikelihood a cell came from a donor"""
+    barcode_pos_reads.reset_index('pos', inplace=True)
 
     temp_probs = 0
     for base in 'ACGT':
@@ -144,16 +144,17 @@ def main():
     # and get CBC likelihoods  
     barcode_reads = single_base_uniq_reads.reset_index('barcode')
     all_cbcs = barcode_reads.barcode.sort_values().unique()
+    num_donors = len(donors)
 
     simplified_region = args.region_name.replace(":", "_").replace("-", "_")
-    with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "w") as outf:
+    with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "wb") as outf:
         first_block = True
         while len(all_cbcs) > 0:
             cur_cbcs = all_cbcs[:100]
             all_cbcs = all_cbcs[100:]
-            barcode_pos_reads = barcode_reads[barcode_reads.barcode.isin(cur_cbcs)].reset_index('pos')
-            num_donors = len(donors)
-            barcode_log_likelihood = generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_probs, alt_probs)
+            # get loglikelihood functions
+            barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)], genotypes, 
+                                                          donors, num_donors, ref_probs, alt_probs)
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
             barcode_log_likelihood.to_csv(outf, header=first_block, compression='gzip', sep='\t')

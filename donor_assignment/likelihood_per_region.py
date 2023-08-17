@@ -8,65 +8,49 @@ import gzip
 def single_base(read):
     return len(set(read)) == 1
 
-def generate_barcode_lls(single_base_uniq_reads, genotypes, donors, ref_probs, alt_probs, simplified_region):
+def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_probs, alt_probs):
     """ In chunks of 100 CBCs, gather loglikelihood a cell came from a donor, 
     and write to the output file"""
 
-    # Generate a DF (umi_probs_position_index) with a probability a umi came
-    # from a donor for each barcode-umi combination
-    barcode_reads = single_base_uniq_reads.reset_index('barcode').sort_values('barcode')
-    unique_barcodes = barcode_reads.barcode.unique()
-    all_cbcs = unique_barcodes.copy()
-    with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "w") as outf:
-        first_block = True
-        while len(all_cbcs) > 0:
-            cur_cbcs = all_cbcs[:100]
-            all_cbcs = all_cbcs[100:]
-            barcode_pos_reads = barcode_reads[barcode_reads.barcode.isin(cur_cbcs)].reset_index('pos')
-            num_donors = len(donors)
-            temp_probs = 0
-            for base in 'ACGT':
-                # Indicator vector of shape [umi_probs_position_index.shape[0] (barcode-umi-pos)] x 1
-                base_is_ref = (genotypes.REF.loc[barcode_pos_reads.pos] == base).values.reshape((-1, 1))
-                base_is_alt = (genotypes.ALT.loc[barcode_pos_reads.pos] == base).values.reshape((-1, 1))
-                base_is_neither = 1 - (base_is_alt + base_is_ref)
+    temp_probs = 0
+    for base in 'ACGT':
+        # Indicator vector of shape [umi_probs_position_index.shape[0] (barcode-umi-pos)] x 1
+        base_is_ref = (genotypes.REF.loc[barcode_pos_reads.pos] == base).values.reshape((-1, 1))
+        base_is_alt = (genotypes.ALT.loc[barcode_pos_reads.pos] == base).values.reshape((-1, 1))
+        base_is_neither = 1 - (base_is_alt + base_is_ref)
 
-                # temp_probs ([pos] x [donor] with positions repeated in umi_probs_position_index ordering)
-                # sum[base] P(donor contributed REF / ALT allele) * Indicator(base is REF / ALT) * P(base | observed bases as SNP)
-                temp_probs += ref_probs.loc[barcode_pos_reads.pos] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
-                temp_probs += alt_probs.loc[barcode_pos_reads.pos] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
-                temp_probs += (1 / num_donors) * base_is_neither * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
-            
-            # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
-            # has the total probability that a barcode/umi came from a donor per donor
-            # for our current subset of CBCs
-            assert (barcode_pos_reads.pos == temp_probs.index).all()
-            tmp = pd.concat([barcode_pos_reads.reset_index(), temp_probs.reset_index(drop=True)], axis=1)
-            umi_probs_position_index_100cbcs = tmp.set_index("barcode UMI".split())
+        # temp_probs ([pos] x [donor] with positions repeated in umi_probs_position_index ordering)
+        # sum[base] P(donor contributed REF / ALT allele) * Indicator(base is REF / ALT) * P(base | observed bases as SNP)
+        temp_probs += ref_probs.loc[barcode_pos_reads.pos] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        temp_probs += alt_probs.loc[barcode_pos_reads.pos] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        temp_probs += (1 / num_donors) * base_is_neither * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+    
+    # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
+    # has the total probability that a barcode/umi came from a donor per donor
+    # for our current subset of CBCs
+    assert (barcode_pos_reads.pos == temp_probs.index).all()
+    tmp = pd.concat([barcode_pos_reads.reset_index(), temp_probs.reset_index(drop=True)], axis=1)
+    umi_probs_position_index = tmp.set_index("barcode UMI".split())
 
-            # Regularize the donor probabilities
-            # log transform
-            # Sum log likelihoods per barcode
-            #
-            regularized_log_probs = umi_probs_position_index_100cbcs.copy()
-            regularized_log_probs[donors] *= 0.95
-            regularized_log_probs[donors] += 0.05 / num_donors
-            regularized_log_probs[donors] = np.log(regularized_log_probs[donors])
-            
-            #
-            # Add in umi counts and snp counts
-            #
-            barcode_log_likelihood = regularized_log_probs.groupby(['barcode'])[donors].sum()
-            num_snps = umi_probs_position_index_100cbcs.groupby(['barcode']).size()
-            num_umis = umi_probs_position_index_100cbcs.reset_index().groupby('barcode')['UMI'].unique().str.len()
-            barcode_log_likelihood['num_snps'] = num_snps
-            barcode_log_likelihood['num_umis'] = num_umis
+    # Regularize the donor probabilities
+    # log transform
+    # Sum log likelihoods per barcode
+    #
+    regularized_log_probs = umi_probs_position_index.copy()
+    regularized_log_probs[donors] *= 0.95
+    regularized_log_probs[donors] += 0.05 / num_donors
+    regularized_log_probs[donors] = np.log(regularized_log_probs[donors])
+    
+    #
+    # Add in umi counts and snp counts
+    #
+    barcode_log_likelihood = regularized_log_probs.groupby(['barcode'])[donors].sum()
+    num_snps = umi_probs_position_index.groupby(['barcode']).size()
+    num_umis = umi_probs_position_index.reset_index().groupby('barcode')['UMI'].unique().str.len()
+    barcode_log_likelihood['num_snps'] = num_snps
+    barcode_log_likelihood['num_umis'] = num_umis
 
-            # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
-            barcode_log_likelihood.to_csv(outf, header=first_block, compression='gzip', sep='\t')
-            first_block = False
-
-    print("Done.")
+    return barcode_log_likelihood
 
             
 
@@ -151,10 +135,32 @@ def main():
     alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
     assert ref_probs.index.is_unique
 
-    # Generae barcode loglikelihoods, and write to output file
-    # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
+    #####
+    # Generate barcode loglikelihoods, and write to output file
+    # final output is barcode_log_likelihood: [barcode] x [donor] loglikelihood
+    #####
+
+    # Split read info into 100 sorted CBC chunks to save memory
+    # and get CBC likelihoods  
+    barcode_reads = single_base_uniq_reads.reset_index('barcode')
+    unique_barcodes = barcode_reads.barcode.sort_values().unique()
+    all_cbcs = unique_barcodes.copy()
+
     simplified_region = args.region_name.replace(":", "_").replace("-", "_")
-    generate_barcode_lls(single_base_uniq_reads, genotypes, donors, ref_probs, alt_probs, simplified_region)
+    with open(f"barcode_log_likelihood_{simplified_region}.txt.gz", "w") as outf:
+        first_block = True
+        while len(all_cbcs) > 0:
+            cur_cbcs = all_cbcs[:100]
+            all_cbcs = all_cbcs[100:]
+            barcode_pos_reads = barcode_reads[barcode_reads.barcode.isin(cur_cbcs)].reset_index('pos')
+            num_donors = len(donors)
+            barcode_log_likelihood = generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_probs, alt_probs)
+            # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
+            # continuously add chunks of CBC likelihoods to the output file
+            barcode_log_likelihood.to_csv(outf, header=first_block, compression='gzip', sep='\t')
+            first_block = False
+
+    print("Done.")
 
 
 if __name__ == '__main__':

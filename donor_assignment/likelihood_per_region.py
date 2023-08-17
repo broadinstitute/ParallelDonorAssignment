@@ -148,8 +148,8 @@ def main():
         all_cbcs = barcode_reads.barcode.sort_values().unique()
         first_block = True
         while len(all_cbcs) > 0:
-            cur_cbcs = all_cbcs[:1000]
-            all_cbcs = all_cbcs[1000:]
+            cur_cbcs = all_cbcs[:500]
+            all_cbcs = all_cbcs[500:]
             print(len(all_cbcs))
             # get loglikelihood functions
             barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],

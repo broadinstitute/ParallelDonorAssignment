@@ -90,6 +90,7 @@ def main():
     #
     single_base_mask = unique_read_counts.read.map(single_base)
     single_base_uniq_reads = unique_read_counts[single_base_mask].copy()
+    print(single_base_uniq_reads.head())
 
     #
     # calculate general probability that each read is a certain base

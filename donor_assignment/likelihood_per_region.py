@@ -56,6 +56,74 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_p
     return barcode_log_likelihood
 
 
+def caclulate_donor_liks(df, donors):
+    """ Calculate donor likelihoods, given a df with columns:
+        [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k] for k donors
+            [donors] columns encode "ref" "alt" or "het" for each donor at that position
+            [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] are the loglikelihoods for each barcode-umi-pos,
+                calculated from the base observed in @function dropulation_likelihoods
+    """
+    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0})
+    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0})
+    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1})
+
+    donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
+    donor_liks['barcode'] = df.barcode
+    donor_liks['pos'] = df.pos
+    donor_liks['chr'] = df.chr
+    return donor_liks.groupby(['barcode'])[donors].sum()
+
+
+def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate = 0.001, het_rate = 0.5):
+    """ Calculate the cell-donor loglikelihoods using dropulation methods"""
+    intermediate_df = barcode_reads.reset_index().copy()
+    
+    # Get the single base (assumed mismatching bases from the same UMI are all dropped already)
+    intermediate_df['base'] = intermediate_df['read'].str[0]
+    
+    # One hot encoding of base
+    intermediate_df = pd.concat(
+        [intermediate_df, pd.get_dummies(pd.Series(intermediate_df['base']))],
+        axis=1
+    )
+    
+    # Annotate REF and ALT with the genotype data (merge is slow)
+    intermediate_df = intermediate_df.merge(genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']], 
+                               on=['chr', 'pos'])
+    
+    # Calculate log likelihoods per UMI and snp
+    base_is_ref_mask = intermediate_df.REF == intermediate_df.base
+    intermediate_df.loc[base_is_ref_mask, 'ref_loglikelihood'] = np.log10((1 - error_rate))
+    intermediate_df.loc[base_is_ref_mask, 'alt_loglikelihood'] = np.log10((error_rate))
+
+    base_is_alt_mask = intermediate_df.ALT == intermediate_df.base
+    intermediate_df.loc[base_is_alt_mask, 'alt_loglikelihood'] = np.log10((1 - error_rate))
+    intermediate_df.loc[base_is_alt_mask, 'ref_loglikelihood'] = np.log10((error_rate))
+
+    base_is_either_mask = (
+        (intermediate_df.ALT == intermediate_df.base) | 
+        (intermediate_df.REF == intermediate_df.base)
+    )
+    intermediate_df.loc[base_is_either_mask, 'het_loglikelihood'] = np.log10(het_rate)
+    
+    # Subset to barcode-umi-pos where it's either ref, alt, or het
+    intermediate_df = intermediate_df[base_is_either_mask]
+
+    # Sum values
+    cbc_snp_umi_counts_df = intermediate_df.groupby(
+        ['barcode', 'chr', 'pos', 'REF', 'ALT']
+    )['A C G T'.split() + ['ref_loglikelihood', 'alt_loglikelihood', 'het_loglikelihood']].sum().reset_index()
+    cbc_snp_umi_counts_df['num_umi'] = cbc_snp_umi_counts_df['A C G T'.split()].sum(axis=1)
+
+    assert (refs_df.index == alt_df.index).all()
+    assert (refs_df + alt_df == 2).all().all()
+    # Reencode each donor as ref, alt, or het based on its copies of the reference allele
+    donor_genotypes = refs_df.replace({1:"het", 2:"ref", 0:"alt"})
+
+    position_likelihoods_donor_genotypes = cbc_snp_umi_counts_df.merge(donor_genotypes.reset_index(), on='pos')
+    return caclulate_donor_liks(position_likelihoods_donor_genotypes, donors)
+
+
 def main():
     #
     # Read in args
@@ -65,6 +133,7 @@ def main():
     parser.add_argument("donor_list", type=str)
     parser.add_argument("VCF_region", type=str)
     parser.add_argument("region_name", type=str)
+    parser.add_argument("likelihood_method", type=str, choices=['our_method', 'dropulation'])
     args = parser.parse_args()
     VCF_str = args.VCF_region
     simplified_region_name = args.region_name.replace(":", "_").replace("-", "_")
@@ -163,8 +232,12 @@ def main():
             all_cbcs = all_cbcs[500:]
             print(len(all_cbcs))
             # get loglikelihood functions
-            barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
-                                                          genotypes, donors, num_donors, ref_probs, alt_probs, simplified_region_name)
+            if args.likelihood_method == 'our_method':
+                barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
+                                                            genotypes, donors, num_donors, ref_probs, alt_probs, simplified_region_name)
+            else:
+                barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)], 
+                                                                 genotypes, refs_df, alt_df, donors)
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
             barcode_log_likelihood.to_csv(outf, header=first_block, compression='gzip', sep='\t')

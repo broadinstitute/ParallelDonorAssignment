@@ -65,11 +65,17 @@ def caclulate_donor_liks(df, donors):
     """
     # treat donors with no genotype at that location as equally likely for ref, alt, or het
         # this effectively diminishes the overall likelihood that the umi came from that donor 
-    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0, 'none':1})
-    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0, 'none':1})
-    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1, 'none':1})
+    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0, 'none':0})
+    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0, 'none':0})
+    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1, 'none':0})
 
     donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
+
+    # fill the 0 values (no genotype) with the population average LL, not including those 0s
+    donor_liks[donor_liks == 0] = np.nan
+    donor_nogt_liks = donor_liks.mean(axis=1).values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':0, 'none':1})
+    donor_liks = donor_liks.fillna(0) + donor_nogt_liks
+
     donor_liks['barcode'] = df.barcode
     donor_liks['pos'] = df.pos
     donor_liks['chr'] = df.chr

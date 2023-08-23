@@ -63,9 +63,11 @@ def caclulate_donor_liks(df, donors):
             [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] are the loglikelihoods for each barcode-umi-pos,
                 calculated from the base observed in @function dropulation_likelihoods
     """
-    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0})
-    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0})
-    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1})
+    # treat donors with no genotype at that location as equally likely for ref, alt, or het
+        # this effectively diminishes the overall likelihood that the umi came from that donor 
+    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0, 'none':1})
+    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0, 'none':1})
+    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1, 'none':1})
 
     donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
     donor_liks['barcode'] = df.barcode
@@ -116,9 +118,11 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     cbc_snp_umi_counts_df['num_umi'] = cbc_snp_umi_counts_df['A C G T'.split()].sum(axis=1)
 
     assert (refs_df.index == alt_df.index).all()
-    assert (refs_df + alt_df == 2).all().all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele
-    donor_genotypes = refs_df.replace({1:"het", 2:"ref", 0:"alt"})
+    replaced_ref = refs_df.replace({1:"het", 2:"ref", 0:"alt"})
+    replaced_alt = alt_df.replace({1:"het", 2:"alt", 0:"ref"})
+    # Fill values where we don't know the genotype (i.e. 0 copies of ref or alt) with 'none'
+    donor_genotypes = replaced_alt[replaced_ref == replaced_alt].fillna('none')
 
     position_likelihoods_donor_genotypes = cbc_snp_umi_counts_df.merge(donor_genotypes.reset_index(), on='pos')
     return caclulate_donor_liks(position_likelihoods_donor_genotypes, donors)

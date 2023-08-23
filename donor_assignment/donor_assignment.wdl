@@ -68,9 +68,10 @@ task generate_regions {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         gsutil cat ${BAM_PATH} | samtools view -H > header.sam
         python3 -u /app/donor_assignment/split_regions.py header.sam ${BAI} ${num_splits}
+        head -5 list_of_regions.txt > only_five_regions.txt
     }
     output {
-        Array[String] regions_list = read_lines("list_of_regions.txt")
+        Array[String] regions_list = read_lines("only_five_regions.txt")
     }
 
     runtime {

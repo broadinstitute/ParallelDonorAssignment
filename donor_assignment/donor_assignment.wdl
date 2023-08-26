@@ -9,7 +9,7 @@ workflow donor_assign {
         File donor_list_file
         String likelihood_method
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
-        String git_branch = "bgzblocks"
+        String git_branch = "dropulation_likelihoods"
     }
 
     Int bam_split_size = floor(size(BAM, "GB") / num_splits)

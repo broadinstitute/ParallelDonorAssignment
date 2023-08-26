@@ -82,7 +82,7 @@ def calculate_donor_liks(df, donors):
     return donor_liks.groupby(['barcode'])[donors + 'num_umis num_snps'.split()].sum()
 
 
-def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5)
+def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5):
     """ Calculate the cell-donor loglikelihoods using dropulation methods"""
     intermediate_df = barcode_reads.reset_index().copy()
 
@@ -97,7 +97,7 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
 
     # Annotate REF and ALT with the genotype data (merge is slow)
     intermediate_df = intermediate_df.merge(genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']],
-                               on=['chr', 'pos'])
+                                            on=['chr', 'pos'])
 
     # Calculate log likelihoods per UMI and snp
     base_is_ref_mask = intermediate_df.REF == intermediate_df.base

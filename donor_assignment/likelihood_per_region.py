@@ -151,7 +151,7 @@ def main():
     #
     # Get variants on reads df, and groupby barcode, umi, and position in the genome
     #
-    df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
+    df = pd.read_table(args.reads_on_variants_results, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
 
     #
     # check for no reads - write empty dataframe

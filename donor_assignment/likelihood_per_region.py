@@ -82,7 +82,7 @@ def calculate_donor_liks(df, donors):
     return donor_liks.groupby(['barcode'])[donors + 'num_umis num_snps'.split()].sum()
 
 
-def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5):
+def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5, simplified_region_name=""):
     """ Calculate the cell-donor loglikelihoods using dropulation methods"""
     intermediate_df = barcode_reads.reset_index().copy()
 
@@ -118,10 +118,14 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     intermediate_df = intermediate_df[base_is_either_mask]
 
     # Sum values
+    intermediate_df.to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/full_test/umi_probs_{simplified_region_name}.txt.gz',
+                           sep='\t')
+
     cbc_snp_umi_counts_df_grpby = intermediate_df.groupby(['barcode', 'chr', 'pos', 'REF', 'ALT'])
-    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum().reset_index()
+    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
+    cbc_snp_umi_counts_df['num_snps'] = cbc_snp_umi_counts_df_grpby.size()
     cbc_snp_umi_counts_df['num_umi'] = cbc_snp_umi_counts_df['A C G T'.split()].sum(axis=1)
-    cbc_snp_umi_counts_df['num_snps'] = cbc_snp_umi_counts_df_grpby.size().reset_index()
+    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df.reset_index()
 
     assert (refs_df.index == alt_df.index).all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele

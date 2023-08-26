@@ -8,6 +8,7 @@ workflows:
           - main
           - bram-dev
           - bgzblocks
+          - dropulation_likelihoods
         tags:
           - /.*/
    - name: "cisvar"

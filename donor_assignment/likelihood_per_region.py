@@ -172,7 +172,7 @@ def main():
              [.1/3, .9, .1/3, .1/3],
              [.1/3, .1/3, .9, .1/3],
              [.1/3, .1/3, .1/3, .9]]
-    probs = pd.DataFrame(index="ACGT".split(''),
+    probs = pd.DataFrame(index="A C G T".split(),
                          columns='prob_A prob_C prob_G prob_T'.split(),
                          data=probs)
 

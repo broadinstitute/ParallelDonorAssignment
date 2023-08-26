@@ -231,8 +231,8 @@ def main():
     # final output is barcode_log_likelihood: [barcode] x [donor] loglikelihood
     #####
 
-    intermediate_df.to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/full_test/umi_probs_{simplified_region_name}.txt.gz',
-                           sep='\t')
+    single_base_uniq_reads.reset_index('barcode').to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/full_test/umi_probs_{simplified_region_name}.txt.gz',
+                                                         sep='\t')
 
 
     num_donors = len(donors)

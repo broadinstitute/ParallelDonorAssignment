@@ -34,7 +34,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_p
     umi_probs_position_index = tmp.set_index("barcode UMI".split())
 
     umi_probs_position_index.to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/2cells_test/umi_probs_{simplified_region_name}.txt.gz',
-                                    compression='gzip', sep='\t')
+                                    sep='\t')
     # Regularize the donor probabilities
     # log transform
     # Sum log likelihoods per barcode
@@ -56,7 +56,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_p
     return barcode_log_likelihood
 
 
-def caclulate_donor_liks(df, donors):
+def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
         [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k] for k donors
             [donors] columns encode "ref" "alt" or "het" for each donor at that position
@@ -64,16 +64,16 @@ def caclulate_donor_liks(df, donors):
                 calculated from the base observed in @function dropulation_likelihoods
     """
     # treat donors with no genotype at that location as equally likely for ref, alt, or het
-        # this effectively diminishes the overall likelihood that the umi came from that donor 
-    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':1, 'alt':0, 'het':0, 'none':0})
-    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':1, 'het':0, 'none':0})
-    donor_het_liks = df.het_loglikelihood.values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':1, 'none':0})
-
+    # this effectively diminishes the overall likelihood that the umi came from that donor
+    #   -- I'm not sure that's true.  It would make them more likely than the lowest likelihood set (-Ray)
+    donor_ref_liks = df.ref_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'ref')
+    donor_alt_liks = df.alt_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'alt')
+    donor_het_liks = df.het_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'het')
     donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
 
     # fill the 0 values (no genotype) with the population average LL, not including those 0s
-    donor_liks[donor_liks == 0] = np.nan
-    donor_nogt_liks = donor_liks.mean(axis=1).values.reshape(-1,1) * df.loc[:, donors].replace({'ref':0, 'alt':0, 'het':0, 'none':1})
+    donor_liks[df[donors] == 'none'] = np.nan
+    donor_nogt_liks = donor_liks.mean(axis=1).values.reshape(-1, 1) * (df[donors] == 'none')
     donor_liks = donor_liks.fillna(0) + donor_nogt_liks
 
     donor_liks['barcode'] = df.barcode
@@ -82,23 +82,23 @@ def caclulate_donor_liks(df, donors):
     return donor_liks.groupby(['barcode'])[donors].sum()
 
 
-def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate = 0.001, het_rate = 0.5):
+def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5):
     """ Calculate the cell-donor loglikelihoods using dropulation methods"""
     intermediate_df = barcode_reads.reset_index().copy()
-    
+
     # Get the single base (assumed mismatching bases from the same UMI are all dropped already)
     intermediate_df['base'] = intermediate_df['read'].str[0]
-    
+
     # One hot encoding of base
     intermediate_df = pd.concat(
         [intermediate_df, pd.get_dummies(pd.Series(intermediate_df['base']))],
         axis=1
     )
-    
+
     # Annotate REF and ALT with the genotype data (merge is slow)
-    intermediate_df = intermediate_df.merge(genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']], 
+    intermediate_df = intermediate_df.merge(genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']],
                                on=['chr', 'pos'])
-    
+
     # Calculate log likelihoods per UMI and snp
     base_is_ref_mask = intermediate_df.REF == intermediate_df.base
     intermediate_df.loc[base_is_ref_mask, 'ref_loglikelihood'] = np.log10((1 - error_rate))
@@ -109,29 +109,29 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     intermediate_df.loc[base_is_alt_mask, 'ref_loglikelihood'] = np.log10((error_rate))
 
     base_is_either_mask = (
-        (intermediate_df.ALT == intermediate_df.base) | 
+        (intermediate_df.ALT == intermediate_df.base) |
         (intermediate_df.REF == intermediate_df.base)
     )
     intermediate_df.loc[base_is_either_mask, 'het_loglikelihood'] = np.log10(het_rate)
-    
+
     # Subset to barcode-umi-pos where it's either ref, alt, or het
     intermediate_df = intermediate_df[base_is_either_mask]
 
     # Sum values
-    cbc_snp_umi_counts_df = intermediate_df.groupby(
-        ['barcode', 'chr', 'pos', 'REF', 'ALT']
-    )['A C G T'.split() + ['ref_loglikelihood', 'alt_loglikelihood', 'het_loglikelihood']].sum().reset_index()
+    cbc_snp_umi_counts_df_grpby = intermediate_df.groupby(['barcode', 'chr', 'pos', 'REF', 'ALT'])
+    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum().reset_index()
     cbc_snp_umi_counts_df['num_umi'] = cbc_snp_umi_counts_df['A C G T'.split()].sum(axis=1)
+    cbc_snp_umi_counts_df['num_snps'] = cbc_snp_umi_counts_df_grpby.size().reset_index()
 
     assert (refs_df.index == alt_df.index).all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele
-    replaced_ref = refs_df.replace({1:"het", 2:"ref", 0:"alt"})
-    replaced_alt = alt_df.replace({1:"het", 2:"alt", 0:"ref"})
+    replaced_ref = refs_df.replace({1: "het", 2: "ref", 0: "alt"})
+    replaced_alt = alt_df.replace({1: "het", 2: "alt", 0: "ref"})
     # Fill values where we don't know the genotype (i.e. 0 copies of ref or alt) with 'none'
     donor_genotypes = replaced_alt[replaced_ref == replaced_alt].fillna('none')
 
     position_likelihoods_donor_genotypes = cbc_snp_umi_counts_df.merge(donor_genotypes.reset_index(), on='pos')
-    return caclulate_donor_liks(position_likelihoods_donor_genotypes, donors)
+    return calculate_donor_liks(position_likelihoods_donor_genotypes, donors)
 
 
 def main():
@@ -151,16 +151,15 @@ def main():
     #
     # Get variants on reads df, and groupby barcode, umi, and position in the genome
     #
-    with gzip.open(args.reads_on_variants_results, 'rt') as file:
-        df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
+    df = pd.read_table(file, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
 
     #
     # check for no reads - write empty dataframe
     #
     if len(df) == 0:
-        with open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
-            pd.DataFrame(columns="barcode no_donor".split()).to_csv(outf, compression='gzip', sep="\t")
-            return
+        pd.DataFrame(columns="barcode no_donor".split()).to_csv(f"barcode_log_likelihood_{simplified_region_name}.txt.gz",
+                                                                sep="\t")
+        return
 
     unique_read_counts = df.groupby(['barcode', 'UMI', 'pos']).sum()
     unique_read_counts['num_reads'] = unique_read_counts.read.str.len()
@@ -169,12 +168,13 @@ def main():
     #
     # Generate probability table for each base
     #
-    probs = {"A": list([.9, .1/3, .1/3, .1/3]),
-             "C": list([.1/3, .9, .1/3, .1/3]),
-             "G": list([.1/3, .1/3, .9, .1/3]),
-             "T": list([.1/3, .1/3, .1/3, .9])}
-    probs = pd.DataFrame(probs).T
-    probs.columns = 'prob_A prob_C prob_G prob_T'.split()
+    probs = [[.9, .1/3, .1/3, .1/3],
+             [.1/3, .9, .1/3, .1/3],
+             [.1/3, .1/3, .9, .1/3],
+             [.1/3, .1/3, .1/3, .9]]
+    probs = pd.DataFrame(index="ACGT".split(''),
+                         columns='prob_A prob_C prob_G prob_T'.split(),
+                         data=probs)
 
     #
     # Delete all copies that map to different bases (e.g. TA (2 copies, diff bases), TTG (3 copies, diff bases))
@@ -231,7 +231,7 @@ def main():
     #####
 
     num_donors = len(donors)
-    with open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
+    with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
         # Split read info into chunks with all the info for a group of CBCs to
         # save memory, then get per CBC likelihoods and write them out
         barcode_reads = single_base_uniq_reads.reset_index('barcode')
@@ -244,13 +244,14 @@ def main():
             # get loglikelihood functions
             if args.likelihood_method == 'our_method':
                 barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
-                                                            genotypes, donors, num_donors, ref_probs, alt_probs, simplified_region_name)
+                                                              genotypes, donors, num_donors, ref_probs, alt_probs,
+                                                              simplified_region_name)
             else:
-                barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)], 
+                barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
                                                                  genotypes, refs_df, alt_df, donors)
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
-            barcode_log_likelihood.to_csv(outf, header=first_block, compression='gzip', sep='\t')
+            barcode_log_likelihood.to_csv(outf, header=first_block, sep='\t')
             first_block = False
 
     print("Done.")

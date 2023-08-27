@@ -36,8 +36,6 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
     tmp = pd.concat([barcode_pos_reads.reset_index(), temp_probs.reset_index(drop=True)], axis=1)
     umi_probs_position_index = tmp.set_index("barcode UMI".split())
 
-    umi_probs_position_index.to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/2cells_test/umi_probs_{simplified_region_name}.txt.gz',
-                                    sep='\t')
     # Regularize the donor probabilities
     # log transform
     # Sum log likelihoods per barcode
@@ -237,9 +235,6 @@ def main():
     # Generate barcode loglikelihoods, and write to output file
     # final output is barcode_log_likelihood: [barcode] x [donor] loglikelihood
     #####
-
-    single_base_uniq_reads.reset_index('barcode').to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/full_test/umi_probs_{simplified_region_name}.txt.gz',
-                                                         sep='\t')
 
     num_donors = len(donors)
     with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:

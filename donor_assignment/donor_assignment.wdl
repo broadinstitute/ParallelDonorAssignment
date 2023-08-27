@@ -71,7 +71,7 @@ task generate_regions {
         head -5 list_of_regions.txt > only_five_regions.txt
     }
     output {
-        Array[String] regions_list = read_lines("only_five_regions.txt")
+        Array[String] regions_list = read_lines("list_of_regions.txt")
     }
 
     runtime {

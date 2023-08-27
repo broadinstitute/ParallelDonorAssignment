@@ -9,7 +9,8 @@ def single_base(read):
     return len(set(read)) == 1
 
 
-def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_probs, alt_probs, simplified_region_name):
+def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
+                         ref_probs, alt_probs, simplified_region_name):
     """ Gather loglikelihood a cell came from a donor"""
     barcode_pos_reads.reset_index('pos', inplace=True)
 
@@ -22,11 +23,13 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_p
 
         # temp_probs ([pos] x [donor] with positions repeated in umi_probs_position_index ordering)
         # sum[base] P(donor contributed REF / ALT allele) * Indicator(base is REF / ALT) * P(base | observed bases as SNP)
-        temp_probs += ref_probs.loc[barcode_pos_reads.pos] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
-        temp_probs += alt_probs.loc[barcode_pos_reads.pos] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        positions = barcode_pos_reads.pos
+        temp_probs += ref_probs.loc[positions] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        temp_probs += alt_probs.loc[positions] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
         temp_probs += (1 / num_donors) * base_is_neither * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
 
-    # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T, donor_1 .... donor_k for k donors])
+    # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T,
+    #                                             donor_1 .... donor_k for k donors])
     # has the total probability that a barcode/umi came from a donor per donor
     # for our current subset of CBCs
     assert (barcode_pos_reads.pos == temp_probs.index).all()
@@ -58,7 +61,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors, ref_p
 
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
-        [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k] for k donors
+        [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k]
             [donors] columns encode "ref" "alt" or "het" for each donor at that position
             [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] are the loglikelihoods for each barcode-umi-pos,
                 calculated from the base observed in @function dropulation_likelihoods
@@ -77,9 +80,7 @@ def calculate_donor_liks(df, donors):
     donor_liks = donor_liks.fillna(0) + donor_nogt_liks
 
     donor_liks['barcode'] = df.barcode
-    donor_liks['pos'] = df.pos
-    donor_liks['chr'] = df.chr
-    return donor_liks.groupby(['barcode'])[donors + 'num_umis num_snps'.split()].sum()
+    return donor_liks.groupby(['barcode']).sum()
 
 
 def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5):
@@ -96,8 +97,8 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     )
 
     # Annotate REF and ALT with the genotype data (merge is slow)
-    intermediate_df = intermediate_df.merge(genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']],
-                                            on=['chr', 'pos'])
+    tmp_genotypes = genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']]
+    intermediate_df = intermediate_df.merge(tmp_genotypes, on=['chr', 'pos'])
 
     # Calculate log likelihoods per UMI and snp
     base_is_ref_mask = intermediate_df.REF == intermediate_df.base
@@ -117,12 +118,10 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     # Subset to barcode-umi-pos where it's either ref, alt, or het
     intermediate_df = intermediate_df[base_is_either_mask]
 
-    # Sum values
-    cbc_snp_umi_counts_df_grpby = intermediate_df.groupby(['barcode', 'chr', 'pos', 'REF', 'ALT'])
-    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
-    cbc_snp_umi_counts_df['num_snps'] = cbc_snp_umi_counts_df_grpby.size()
-    cbc_snp_umi_counts_df['num_umi'] = cbc_snp_umi_counts_df['A C G T'.split()].sum(axis=1)
-    cbc_snp_umi_counts_df = cbc_snp_umi_counts_df.reset_index()
+    # Sum values over pos - but groupby more than that so we can use .sum()
+    per_snp_loglik_grpby = intermediate_df.groupby(['barcode', 'chr', 'pos', 'REF', 'ALT'])  # move  these into index
+    per_snp_loglik = per_snp_loglik_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
+    per_snp_loglik = per_snp_loglik.reset_index()
 
     assert (refs_df.index == alt_df.index).all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele
@@ -131,8 +130,16 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     # Fill values where we don't know the genotype (i.e. 0 copies of ref or alt) with 'none'
     donor_genotypes = replaced_alt[replaced_ref == replaced_alt].fillna('none')
 
-    position_likelihoods_donor_genotypes = cbc_snp_umi_counts_df.merge(donor_genotypes.reset_index(), on='pos')
-    return calculate_donor_liks(position_likelihoods_donor_genotypes, donors)
+    # add genotypes, and compute per cbc likelihoods
+    donor_likelihoods = calculate_donor_liks(per_snp_loglik.merge(donor_genotypes.reset_index(), on='pos'),
+                                             donors)
+
+    # count UMIs, and num_snps == (UMIS x SNPs)
+    umi_snp_counts = intermediate_df.groupby("barcode UMI".split()).pos.nunique()
+    umi_snp_counts = umi_snp_counts.reset_index().groupby("barcode")
+    donor_likelihoods['num_umis'] = umi_snp_counts.UMI.nunique()
+    donor_likelihoods['num_snps'] = umi_snp_counts.pos.sum()
+    return donor_likelihoods
 
 
 def main():
@@ -194,11 +201,11 @@ def main():
     # load donors
     #
     donors = [ln.strip() for ln in open(args.donor_list)]
-    donors_joined = ",".join(donors)
+
     #
     # filter to donors
     #
-    bcftools_proc = subprocess.Popen(f"bcftools query -s {donors_joined} -f %CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n {VCF_str}".split(' '),
+    bcftools_proc = subprocess.Popen(f"bcftools query -s {','.join(donors)} -f %CHROM\t%POS\t%TYPE\t%REF\t%ALT[\t%GT]\n {VCF_str}".split(' '),
                                      stdout=subprocess.PIPE)
 
     genotypes = pd.read_table(bcftools_proc.stdout, header=None,
@@ -233,7 +240,6 @@ def main():
 
     single_base_uniq_reads.reset_index('barcode').to_csv(f'gs://landerlab-20220111-thouis-donorassign-test/full_test/umi_probs_{simplified_region_name}.txt.gz',
                                                          sep='\t')
-
 
     num_donors = len(donors)
     with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:

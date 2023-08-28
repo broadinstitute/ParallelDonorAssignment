@@ -160,7 +160,7 @@ def main():
     #
     df = pd.read_table(args.reads_on_variants_results, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
     # whitelist_barcodes must contain column named 'barcode'
-    whitelist_barcodes = set(pd.read_table(args.whitelist_fname, header=None).squeeze().values)
+    whitelist_barcodes = pd.read_table(args.whitelist_fname, header=None).squeeze().values
     df = df[df.barcode.isin(whitelist_barcodes)]
 
     #

@@ -7,7 +7,7 @@ workflow donor_assign {
         Int num_splits
         File VCF
         File donor_list_file
-        File whitelist_file
+        File whitelist
         String likelihood_method
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "dropulation_likelihoods"
@@ -33,7 +33,7 @@ workflow donor_assign {
                 region = region,
                 VCF_PATH = "~{VCF}",
                 donor_list_file = donor_list_file,
-                whitelist_file = whitelist_file,
+                whitelist = whitelist,
                 bam_size = bam_split_size,
                 vcf_size = vcf_size,
                 likelihood_method = likelihood_method,
@@ -91,7 +91,7 @@ task region_donor_log_likelihoods {
         String region
         String VCF_PATH
         File donor_list_file
-        File whitelist_file
+        File whitelist
         Int bam_size
         Int vcf_size
         String likelihood_method
@@ -118,7 +118,7 @@ task region_donor_log_likelihoods {
 
         ls -l region.bam region.vcf.gz
         python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
-        python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region} ${likelihood_method} ${whitelist_file}
+        python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region} ${likelihood_method} ${whitelist}
     }
 
     output {

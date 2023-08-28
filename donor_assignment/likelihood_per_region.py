@@ -150,6 +150,7 @@ def main():
     parser.add_argument("VCF_region", type=str)
     parser.add_argument("region_name", type=str)
     parser.add_argument("likelihood_method", type=str, choices=['our_method', 'dropulation'])
+    parser.add_argument("whitelist_fname", type=str, help='.txt file with "barcode" column that contains CBCs to count')
     args = parser.parse_args()
     VCF_str = args.VCF_region
     simplified_region_name = args.region_name.replace(":", "_").replace("-", "_")
@@ -158,7 +159,10 @@ def main():
     # Get variants on reads df, and groupby barcode, umi, and position in the genome
     #
     df = pd.read_table(args.reads_on_variants_results, header=None, names=('chr', 'pos', 'read', 'barcode', 'UMI'))
-
+    # whitelist_barcodes must contain column named 'barcode'
+    whitelist_barcodes = pd.read_table(args.whitelist_fname)
+    df = df[df.barcode.isin(whitelist_barcodes.barcode)]
+    
     #
     # check for no reads - write empty dataframe
     #

@@ -118,7 +118,8 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
 
     # Sum values over pos - but groupby more than that so we can use .sum()
     per_snp_loglik_grpby = intermediate_df.groupby(['barcode', 'chr', 'pos', 'REF', 'ALT'])  # move  these into index
-    per_snp_loglik = per_snp_loglik_grpby['A C G T ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
+    # if testing, can sum 'A C T G' as well
+    per_snp_loglik = per_snp_loglik_grpby['ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
     per_snp_loglik = per_snp_loglik.reset_index()
 
     assert (refs_df.index == alt_df.index).all()

@@ -88,11 +88,8 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     # Get the single base (assumed mismatching bases from the same UMI are all dropped already)
     intermediate_df['base'] = intermediate_df['read'].str[0]
 
-    # One hot encoding of base
-    intermediate_df = pd.concat(
-        [intermediate_df, pd.get_dummies(pd.Series(intermediate_df['base']))],
-        axis=1
-    )
+    # For testing, can get one hot encoding of bases. But not necessary
+    # e.g pd.get_dummies(pd.Series(intermediate_df['base']))]
 
     # Annotate REF and ALT with the genotype data (merge is slow)
     tmp_genotypes = genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']]

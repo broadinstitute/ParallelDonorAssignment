@@ -14,8 +14,8 @@ workflow cisvar {
         VCF="~{VCF}",
         bam_size=size(BAM, "GB"),
         vcf_size=size(VCF, "GB"),
-        docker_image = docker_image,
-        git_branch = git_branch
+        docker_image=docker_image,
+        git_branch=git_branch
     }
     output {
         File donor_weights = est_cisvar.donor_weights

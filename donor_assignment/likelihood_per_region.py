@@ -49,8 +49,16 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
     # Add in umi counts and snp counts
     #
     barcode_log_likelihood = regularized_log_probs.groupby(['barcode']).sum()
-    num_snps = umi_probs_position_index.groupby(['barcode']).size()
-    num_umis = umi_probs_position_index.reset_index().groupby('barcode')['UMI'].unique().str.len()
+
+    umi_probs_position_index['snp_id'] = umi_probs_position_index['chr'].astype(str) + ':' \
+        + umi_probs_position_index['pos'].astype(str) + ':' \
+        + umi_probs_position_index['read'].astype(str)
+
+    num_umi_snps = umi_probs_position_index.groupby(['barcode']).size()
+    num_snps = umi_probs_position_index.groupby(['barcode'])['snp_id'].nunique()
+    num_umis = umi_probs_position_index.reset_index().groupby('barcode')['UMI'].nunique()
+    
+    barcode_log_likelihood['num_umi_snps'] = num_umi_snps
     barcode_log_likelihood['num_snps'] = num_snps
     barcode_log_likelihood['num_umis'] = num_umis
 

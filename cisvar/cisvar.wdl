@@ -13,7 +13,7 @@ workflow cisvar {
         BAM="~{BAM}",
         VCF="~{VCF}",
         bam_size=size(BAM, "GB"),
-        vcf_size=size(VCF, "GB")
+        vcf_size=size(VCF, "GB"),
         docker_image = docker_image,
         git_branch = git_branch
     }

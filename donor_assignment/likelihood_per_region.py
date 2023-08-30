@@ -87,13 +87,15 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
 
     # Get the single base (assumed mismatching bases from the same UMI are all dropped already)
     intermediate_df['base'] = intermediate_df['read'].str[0]
-
     # For testing, can get one hot encoding of bases. But not necessary
     # e.g pd.get_dummies(pd.Series(intermediate_df['base']))]
 
     # Annotate REF and ALT with the genotype data (merge is slow)
     tmp_genotypes = genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']]
     intermediate_df = intermediate_df.merge(tmp_genotypes, on=['chr', 'pos'])
+    
+    if intermediate_df.empty:
+        return None
 
     # Calculate log likelihoods per UMI and snp
     base_is_ref_mask = intermediate_df.REF == intermediate_df.base
@@ -169,10 +171,10 @@ def main():
                                                                 sep="\t")
         return
 
-    unique_read_counts = df.groupby(['barcode', 'UMI', 'pos']).sum()
+
+    unique_read_counts = df.groupby(['barcode', 'UMI', 'pos', 'chr']).sum()
     unique_read_counts['num_reads'] = unique_read_counts.read.str.len()
     print(f"Read data for {len(unique_read_counts)} UMIs.")
-
     #
     # Generate probability table for each base
     #
@@ -257,9 +259,13 @@ def main():
             else:
                 barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
                                                                  genotypes, refs_df, alt_df, donors)
+                
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
-            barcode_log_likelihood.to_csv(outf, header=first_block, sep='\t')
+            if barcode_log_likelihood is not None:
+                barcode_log_likelihood.to_csv(outf, header=first_block, sep='\t')
+            else:
+                continue
             first_block = False
 
     print("Done.")

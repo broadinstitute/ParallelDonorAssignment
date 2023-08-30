@@ -9,7 +9,7 @@ workflows:
           - bram-dev
           - bgzblocks
           - dropulation_likelihoods
-	  - dropulation_likelihoods_update_snp_counts
+          - dropulation_likelihoods_update_snp_counts
         tags:
           - /.*/
    - name: "cisvar"

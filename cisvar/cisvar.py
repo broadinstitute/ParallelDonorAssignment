@@ -2,6 +2,7 @@ import sys
 import subprocess
 import pandas as pd
 from scipy.optimize import nnls
+import numpy as np
 
 donors_file = sys.argv[1]
 genotypes = sys.argv[2]
@@ -110,8 +111,14 @@ pileup['regularized_ALT_frac'] = (pileup.count_ALT + 1) / (pileup.count_REF + pi
 good = (pileup.regularized_ALT_frac < 0.9) & (pileup.regularized_ALT_frac > 0.1)  # from cisVar
 y = pileup.regularized_ALT_frac[good].values
 X = allele_counts_ALT.loc[good].values
-weights, residual = nnls(X, y)
-print(f"Solved with RMSE = {residual / len(y)}")
+
+alpha = pileup.count_ALT + 1
+beta = pileup.count_REF + 1
+variance = (alpha * beta) / ((alpha + beta) * (alpha + beta) * (alpha + beta + 1))
+regression_weights = (1 / variance[good]).values
+
+weights, residual = nnls(X * regression_weights.reshape((-1, 1)), y * regression_weights)
+print(f"Solved with weighted error = {residual / sum(regression_weights)}")
 print(f"Sum of weights = {weights.sum()}.  Should be near 0.5.")
 weights = weights / weights.sum()
 with open("donor_weights.txt", "w") as weights_file:

@@ -55,6 +55,7 @@ workflow donor_assign {
         Array[String] regions_list = generate_regions.regions_list
         Array[File] region_barcode_log_likelihood_list = region_donor_log_likelihoods.barcode_log_likelihood 
         File total_barcode_donor_likelihoods = gather_region_donor_log_likelihoods.total_barcode_donor_likelihoods
+        File loglik_per_umi_plot = gather_region_donor_log_likelihoods.loglik_per_umi_plot
     }
 }
 
@@ -158,6 +159,7 @@ task gather_region_donor_log_likelihoods {
 
     output {
         File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.txt.gz'
+        File loglik_per_umi_plot = 'loglik_per_umi_plot.png'
     }
 
     runtime {

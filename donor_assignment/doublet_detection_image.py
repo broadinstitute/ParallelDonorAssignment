@@ -38,7 +38,7 @@ def main():
     ax.set_ylabel('num UMIs')
 
     plt.tight_layout()
-    plt.savefig('test_fig.png', dpi=200)
+    plt.savefig('loglik_per_umi_plot.png', dpi=200)
 
 if __name__ == '__main__':
     main()

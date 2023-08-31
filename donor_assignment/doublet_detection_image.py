@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pylab
 import argparse
+import numpy as np
 
 params = {
     "legend.fontsize": "40",
@@ -15,6 +16,76 @@ params = {
     "font.sans-serif": "Helvetica",
 }
 pylab.rcParams.update(params)
+
+
+def generate_loglik_per_umi_fig(sample_best_LL):
+    fig, ax = plt.subplots(figsize=(9, 7))
+    hb = ax.hexbin(
+        sample_best_LL.LogLikperUMI,
+        sample_best_LL.num_umis,
+        yscale="log",
+        cmap="inferno",
+        bins="log",
+    )
+    fig.colorbar(hb, ax=ax, label="# of cells")
+    ax.set_xlabel("LogLik per UMI")
+    ax.set_ylabel("num UMIs")
+
+    plt.tight_layout()
+    plt.savefig("loglik_per_umi_plot.png", dpi=200)
+
+
+def threshold_otsu(x, *args, **kwargs):
+    """Find the threshold value for a bimodal histogram using the Otsu method.
+
+    If you have a distribution that is bimodal (AKA with two peaks, with a valley
+    between them), then you can use this to find the location of that valley, that
+    splits the distribution into two.
+
+    From the SciKit Image threshold_otsu implementation:
+    https://github.com/scikit-image/scikit-image/blob/70fa904eee9ef370c824427798302551df57afa1/skimage/filters/thresholding.py#L312
+    """
+    counts, bin_edges = np.histogram(x, *args, **kwargs)
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+
+    # class probabilities for all possible thresholds
+    weight1 = np.cumsum(counts)
+    weight2 = np.cumsum(counts[::-1])[::-1]
+    # class means for all possible thresholds
+    mean1 = np.cumsum(counts * bin_centers) / weight1
+    mean2 = (np.cumsum((counts * bin_centers)[::-1]) / weight2[::-1])[::-1]
+
+    # Clip ends to align class 1 and class 2 variables:
+    # The last value of ``weight1``/``mean1`` should pair with zero values in
+    # ``weight2``/``mean2``, which do not exist.
+    variance12 = weight1[:-1] * weight2[1:] * (mean1[:-1] - mean2[1:]) ** 2
+
+    idx = np.argmax(variance12)
+    threshold = bin_centers[idx]
+    return threshold
+
+
+def get_singlets(sample_best_LL):
+    thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+    ax.hist(sample_best_LL.LogLikperUMI)
+    ax.axvline(thresh, c="r")
+    ax.set_xlabel("LogLikperUMI")
+    ax.annotate(
+        f"Threshold: {round(thresh,3)}",
+        (0.1, 0.9),
+        xycoords="axes fraction",
+        fontsize=25,
+    )
+    plt.tight_layout()
+    plt.savefig("loglik_per_umi_histogram.png", dpi=200)
+
+    singlets = sample_best_LL[sample_best_LL.LogLikperUMI > thresh]
+    # save singlets df
+    singlets.reset_index()["barcode bestSample".split()].to_csv(
+        "singlets.txt", index=None, sep="\t"
+    )
 
 
 def main():
@@ -43,20 +114,8 @@ def main():
         sample_best_LL.bestLikelihood / sample_best_LL.num_umis
     )
 
-    fig, ax = plt.subplots(figsize=(9, 7))
-    hb = ax.hexbin(
-        sample_best_LL.LogLikperUMI,
-        sample_best_LL.num_umis,
-        yscale="log",
-        cmap="inferno",
-        bins="log",
-    )
-    fig.colorbar(hb, ax=ax, label="# of cells")
-    ax.set_xlabel("LogLik per UMI")
-    ax.set_ylabel("num UMIs")
-
-    plt.tight_layout()
-    plt.savefig("loglik_per_umi_plot.png", dpi=200)
+    generate_loglik_per_umi_fig(sample_best_LL)
+    get_singlets(sample_best_LL)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ workflow donor_assign {
         input:
             barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
             files_size = size(region_donor_log_likelihoods.barcode_log_likelihood, "GB"),
+            donor_list_file = donor_list_file,
             docker_image = docker_image,
             git_branch = git_branch
     }
@@ -139,6 +140,7 @@ task gather_region_donor_log_likelihoods {
     input {
         Array[String] barcode_log_likelihood
         Float files_size
+        File donor_list_file
         String docker_image
         String git_branch
     }
@@ -149,6 +151,9 @@ task gather_region_donor_log_likelihoods {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
         python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
+
+        pip install matplotlib
+        python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file}
     }
 
     output {

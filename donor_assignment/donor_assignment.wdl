@@ -152,7 +152,7 @@ task gather_region_donor_log_likelihoods {
         bash /app/monitor_script.sh &
         python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
 
-        pip install matplotlib
+        pip3 install matplotlib --break-system-packages
         python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file}
     }
 

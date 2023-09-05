@@ -123,7 +123,7 @@ task region_donor_log_likelihoods {
         ls -l region.bam region.vcf.gz
         python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
         echo -n "Results of counting on variants"
-        gzcat results.tsv.gz | wc -l
+        gunzip -c results.tsv.gz | wc -l
         python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region} ${likelihood_method} ${whitelist}
     }
 

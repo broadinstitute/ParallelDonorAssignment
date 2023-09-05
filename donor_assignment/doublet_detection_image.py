@@ -18,7 +18,7 @@ params = {
 pylab.rcParams.update(params)
 
 
-def generate_loglik_per_umi_fig(sample_best_LL):
+def generate_loglik_per_umi_fig(sample_best_LL, thresh):
     fig, ax = plt.subplots(figsize=(9, 7))
     hb = ax.hexbin(
         sample_best_LL.LogLikperUMI,
@@ -30,7 +30,9 @@ def generate_loglik_per_umi_fig(sample_best_LL):
     fig.colorbar(hb, ax=ax, label="# of cells")
     ax.set_xlabel("LogLik per UMI")
     ax.set_ylabel("num UMIs")
-
+    ax.axvline(thresh, c="r")
+    
+    plt.xticks(rotation=30)
     plt.tight_layout()
     plt.savefig("loglik_per_umi_plot.png", dpi=200)
 
@@ -65,11 +67,10 @@ def threshold_otsu(x, *args, **kwargs):
     return threshold
 
 
-def get_singlets(sample_best_LL):
-    thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
+def get_singlets(sample_best_LL, thresh):
 
     fig, ax = plt.subplots(figsize=(9, 7))
-    ax.hist(sample_best_LL.LogLikperUMI)
+    ax.hist(sample_best_LL.LogLikperUMI, bins=30)
     ax.axvline(thresh, c="r")
     ax.set_xlabel("LogLikperUMI")
     ax.annotate(
@@ -114,8 +115,9 @@ def main():
         sample_best_LL.bestLikelihood / sample_best_LL.num_umis
     )
 
-    generate_loglik_per_umi_fig(sample_best_LL)
-    get_singlets(sample_best_LL)
+    thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
+    generate_loglik_per_umi_fig(sample_best_LL, thresh)
+    get_singlets(sample_best_LL, thresh)
 
 
 if __name__ == "__main__":

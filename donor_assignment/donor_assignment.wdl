@@ -9,6 +9,7 @@ workflow donor_assign {
         File donor_list_file
         File whitelist
         String likelihood_method
+        String? UMI_tag
         Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "dropulation_likelihoods"
@@ -38,6 +39,7 @@ workflow donor_assign {
                 bam_size = bam_split_size,
                 vcf_size = vcf_size,
                 likelihood_method = likelihood_method,
+                UMI_tag = UMI_tag,
                 docker_image = docker_image,
                 git_branch = git_branch
         }
@@ -101,6 +103,7 @@ task region_donor_log_likelihoods {
         Int bam_size
         Int vcf_size
         String likelihood_method
+        String? UMI_tag
         String docker_image
         String git_branch
     }
@@ -123,7 +126,7 @@ task region_donor_log_likelihoods {
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
 
         ls -l region.bam region.vcf.gz
-        python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
+        python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz ~{"--umi-tag=" + UMI_tag}
         echo -n "Results of counting on variants"
         gunzip -c results.tsv.gz | wc -l
         python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region} ${likelihood_method} ${whitelist}

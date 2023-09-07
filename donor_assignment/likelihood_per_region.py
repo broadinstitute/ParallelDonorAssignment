@@ -89,7 +89,7 @@ def calculate_donor_liks(df, donors):
     return donor_liks.groupby(['barcode']).sum()
 
 
-def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, error_rate=0.001, het_rate=0.5):
+def dropulation_likelihoods(barcode_reads, genotypes, donor_ref_cts, donor_alt_cts, donors, error_rate=0.001, het_rate=0.5):
     """ Calculate the cell-donor loglikelihoods using dropulation methods"""
     intermediate_df = barcode_reads.reset_index().copy()
 
@@ -129,10 +129,10 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     per_snp_loglik = per_snp_loglik_grpby['ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
     per_snp_loglik = per_snp_loglik.reset_index()
 
-    assert (refs_df.index == alt_df.index).all()
+    assert (donor_ref_cts.index == donor_alt_cts.index).all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele
-    replaced_ref = refs_df.replace({1: "het", 2: "ref", 0: "alt"})
-    replaced_alt = alt_df.replace({1: "het", 2: "alt", 0: "ref"})
+    replaced_ref = donor_ref_cts.replace({1: "het", 2: "ref", 0: "alt"})
+    replaced_alt = donor_alt_cts.replace({1: "het", 2: "alt", 0: "ref"})
     # Fill values where we don't know the genotype (i.e. 0 copies of ref or alt) with 'none'
     donor_genotypes = replaced_alt[replaced_ref == replaced_alt].fillna('none')
 
@@ -226,22 +226,22 @@ def main():
 
     #
     # Generate ref and alt counts dfs
-    # refs_df and alt_df have the total number of reference and alt alleles for each donor at each SNP position
+    # donor_ref_cts and donor_alt_cts have the total number of reference and alt alleles for each donor at each SNP position
     #
-    refs_df = pd.DataFrame(index=genotypes.index, columns=donors)
-    alt_df = pd.DataFrame(index=genotypes.index, columns=donors)
+    donor_ref_cts = pd.DataFrame(index=genotypes.index, columns=donors)
+    donor_alt_cts = pd.DataFrame(index=genotypes.index, columns=donors)
     for col in donors:
-        refs_df[col] = genotypes[col].str.count('0')
-        alt_df[col] = genotypes[col].str.count('1')
+        donor_ref_cts[col] = genotypes[col].str.count('0')
+        donor_alt_cts[col] = genotypes[col].str.count('1')
     print("Genotypes to counts done.")
 
     # ref_probs and alt_probs is the proportion of observed alleles that came
     # from that donor -- normalized to the total counts of REF / ALT at that
     # SNP (it is relative to the total number of reference or alt alleles at
     # that SNP across the donor population)
-    ref_probs = refs_df.div(refs_df.sum(axis=1), axis=0)
-    alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
-    assert ref_probs.index.is_unique
+    P_donor_given_ref = donor_ref_cts.div(donor_ref_cts.sum(axis=1), axis=0)
+    P_donor_given_alt = donor_alt_cts.div(donor_alt_cts.sum(axis=1), axis=0)
+    assert P_donor_given_ref.index.is_unique
 
     #####
     # Generate barcode loglikelihoods, and write to output file
@@ -266,7 +266,7 @@ def main():
                                                               simplified_region_name)
             else:
                 barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
-                                                                 genotypes, refs_df, alt_df, donors)
+                                                                 genotypes, donor_ref_cts, donor_alt_cts, donors)
                 
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file

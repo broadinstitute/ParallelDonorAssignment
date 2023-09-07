@@ -108,13 +108,17 @@ task region_donor_log_likelihoods {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
 
-        # use gsutil instead of htslib for stability
-        gsutil cat ${BAM_PATH} | samtools view -H -O bam > region.bam
-        gsutil cat -r ${file_region} ${BAM_PATH} >> region.bam
-
-        gsutil -q cp ${VCF_PATH} full.vcf.gz
-        gsutil -q cp ${VCF_PATH}.tbi full.vcf.gz.tbi
-        bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
+        ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
+        # Sometimes fails, so we use a retry mechanism
+        for i in {1..3}; do
+            echo "Attempt" $i
+            gcloud auth print-access-token > token.txt
+            export HTS_AUTH_LOCATION="token.txt"
+            bcftools view -O z -o region.vcf.gz ${VCF_PATH} ${chrom_region} && \
+            samtools view  -O bam -o region.bam -X ${BAM_PATH} ${BAI} ${chrom_region} && \
+            break || \
+            sleep 60
+        done
 
         ls -l region.bam region.vcf.gz
         python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz

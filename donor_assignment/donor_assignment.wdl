@@ -9,6 +9,7 @@ workflow donor_assign {
         File donor_list_file
         File whitelist
         String likelihood_method
+        Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "dropulation_likelihoods"
     }
@@ -47,6 +48,7 @@ workflow donor_assign {
             barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
             files_size = size(region_donor_log_likelihoods.barcode_log_likelihood, "GB"),
             donor_list_file = donor_list_file,
+            singlet_threshold = singlet_threshold,
             docker_image = docker_image,
             git_branch = git_branch
     }
@@ -146,6 +148,7 @@ task gather_region_donor_log_likelihoods {
         Array[String] barcode_log_likelihood
         Float files_size
         File donor_list_file
+        Float? singlet_threshold
         String docker_image
         String git_branch
     }
@@ -158,7 +161,7 @@ task gather_region_donor_log_likelihoods {
         python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
 
         pip3 install matplotlib --break-system-packages
-        python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file}
+        python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file} ~{"--threshold=" + singlet_threshold}
     }
 
     output {

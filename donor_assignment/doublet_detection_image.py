@@ -95,6 +95,7 @@ def main():
     )
     parser.add_argument("cell_donor_likelihoods", type=str)
     parser.add_argument("donor_names", type=str)
+    parser.add_argument("--threshold", type=float, help='optional argument for pre-set singlet threshold')
     args = parser.parse_args()
 
     cell_donor_lls = pd.read_table(args.cell_donor_likelihoods)
@@ -115,7 +116,11 @@ def main():
         sample_best_LL.bestLikelihood / sample_best_LL.num_umis
     )
 
-    thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
+    if args.threshold is None:
+        thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
+    else:
+        thresh = args.threshold
+        
     generate_loglik_per_umi_fig(sample_best_LL, thresh)
     get_singlets(sample_best_LL, thresh)
 

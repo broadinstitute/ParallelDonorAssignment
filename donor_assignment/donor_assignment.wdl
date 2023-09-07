@@ -9,6 +9,8 @@ workflow donor_assign {
         File donor_list_file
         File whitelist
         String likelihood_method
+        String? UMI_tag
+        Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "dropulation_likelihoods"
     }
@@ -37,6 +39,7 @@ workflow donor_assign {
                 bam_size = bam_split_size,
                 vcf_size = vcf_size,
                 likelihood_method = likelihood_method,
+                UMI_tag = UMI_tag,
                 docker_image = docker_image,
                 git_branch = git_branch
         }
@@ -46,6 +49,8 @@ workflow donor_assign {
         input:
             barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
             files_size = size(region_donor_log_likelihoods.barcode_log_likelihood, "GB"),
+            donor_list_file = donor_list_file,
+            singlet_threshold = singlet_threshold,
             docker_image = docker_image,
             git_branch = git_branch
     }
@@ -54,6 +59,9 @@ workflow donor_assign {
         Array[String] regions_list = generate_regions.regions_list
         Array[File] region_barcode_log_likelihood_list = region_donor_log_likelihoods.barcode_log_likelihood 
         File total_barcode_donor_likelihoods = gather_region_donor_log_likelihoods.total_barcode_donor_likelihoods
+        File loglik_per_umi_plot = gather_region_donor_log_likelihoods.loglik_per_umi_plot
+        File loglik_per_umi_histogram = gather_region_donor_log_likelihoods.loglik_per_umi_histogram
+        File singlets = gather_region_donor_log_likelihoods.singlets
     }
 }
 
@@ -95,6 +103,7 @@ task region_donor_log_likelihoods {
         Int bam_size
         Int vcf_size
         String likelihood_method
+        String? UMI_tag
         String docker_image
         String git_branch
     }
@@ -117,7 +126,9 @@ task region_donor_log_likelihoods {
         bcftools view -O z -o region.vcf.gz full.vcf.gz ${chrom_region}
 
         ls -l region.bam region.vcf.gz
-        python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz
+        python3 -u /app/donor_assignment/count_reads_on_variants.py region.bam region.vcf.gz ~{"--umi-tag=" + UMI_tag}
+        echo -n "Results of counting on variants"
+        gunzip -c results.tsv.gz | wc -l
         python3 -u /app/donor_assignment/likelihood_per_region.py results.tsv.gz ${donor_list_file} region.vcf.gz ${chrom_region} ${likelihood_method} ${whitelist}
     }
 
@@ -139,6 +150,8 @@ task gather_region_donor_log_likelihoods {
     input {
         Array[String] barcode_log_likelihood
         Float files_size
+        File donor_list_file
+        Float? singlet_threshold
         String docker_image
         String git_branch
     }
@@ -149,10 +162,16 @@ task gather_region_donor_log_likelihoods {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
         python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
+
+        pip3 install matplotlib --break-system-packages
+        python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file} ~{"--threshold=" + singlet_threshold}
     }
 
     output {
         File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.txt.gz'
+        File loglik_per_umi_plot = 'loglik_per_umi_plot.png'
+        File loglik_per_umi_histogram = 'loglik_per_umi_histogram.png'
+        File singlets = 'singlets.txt'
     }
 
     runtime {

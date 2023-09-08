@@ -64,7 +64,6 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
 
     return barcode_log_likelihood
 
-@profile
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
         [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k]

@@ -4,10 +4,10 @@ import argparse
 
 
 class count_variants_on_region:
-    def __init__(self, bam_path, vcf_path, umi_tag='UB'):
+    def __init__(self, bam_path, vcf_path, umi_tag):
         self.bam_path = bam_path
         self.vcf_path = vcf_path
-        self.umi_tag = umi_tag
+        self.umi_tag = (umi_tag if umi_tag is not None else 'UB')
         self.variants = {}
 
     def load_vcf(self):
@@ -32,7 +32,6 @@ class count_variants_on_region:
                     UMI = bam_line.query_name
             except Exception:
                 continue
-
             for read_idx, genome_pos in bam_line.get_aligned_pairs(matches_only=True):
                 # see if a read overlaps a snp site, and if it does print out
                 # what you read (location of the snp overlap, base that was

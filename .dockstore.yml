@@ -9,7 +9,6 @@ workflows:
           - bram-dev
           - dropulation_likelihoods
           - dropulation_likelihoods_update_snp_counts
-          - use_token_with_retry
         tags:
           - /.*/
    - name: "cisvar"

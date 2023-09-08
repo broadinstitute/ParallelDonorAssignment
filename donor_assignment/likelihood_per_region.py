@@ -10,7 +10,7 @@ def single_base(read):
 
 
 def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
-                         ref_probs, alt_probs, simplified_region_name):
+                         P_donor_given_ref, P_donor_given_alt, simplified_region_name):
     """ Gather loglikelihood a cell came from a donor"""
     barcode_pos_reads.reset_index('pos', inplace=True)
 
@@ -24,8 +24,8 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
         # temp_probs ([pos] x [donor] with positions repeated in umi_probs_position_index ordering)
         # sum[base] P(donor contributed REF / ALT allele) * Indicator(base is REF / ALT) * P(base | observed bases as SNP)
         positions = barcode_pos_reads.pos
-        temp_probs += ref_probs.loc[positions] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
-        temp_probs += alt_probs.loc[positions] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        temp_probs += P_donor_given_ref.loc[positions] * base_is_ref * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
+        temp_probs += P_donor_given_alt.loc[positions] * base_is_alt * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
         temp_probs += (1 / num_donors) * base_is_neither * barcode_pos_reads[f'prob_{base}'].values.reshape((-1, 1))
 
     # umi_probs_position_index ([barcode, umi] x [pos, chr, read, prob_A, prob_C, prob_G, prob_T,
@@ -128,7 +128,6 @@ def dropulation_likelihoods(barcode_reads, genotypes, donor_ref_cts, donor_alt_c
     per_snp_loglik = per_snp_loglik_grpby['ref_loglikelihood alt_loglikelihood het_loglikelihood'.split()].sum()
     per_snp_loglik = per_snp_loglik.reset_index()
 
-    assert (donor_ref_cts.index == donor_alt_cts.index).all()
     # Reencode each donor as ref, alt, or het based on its copies of the reference allele
     replaced_ref = donor_ref_cts.replace({1: "het", 2: "ref", 0: "alt"})
     replaced_alt = donor_alt_cts.replace({1: "het", 2: "alt", 0: "ref"})
@@ -239,8 +238,9 @@ def main():
         donor_ref_cts.loc[missing_cts_fil, col] = donor_ref_cts.loc[~missing_cts_fil, col].mean()
         donor_alt_cts.loc[missing_cts_fil, col] = donor_alt_cts.loc[~missing_cts_fil, col].mean()
     print("Genotypes to counts done.")
+    assert (donor_ref_cts.index == donor_alt_cts.index).all()
 
-    # ref_probs and alt_probs is the proportion of observed alleles that came
+    # P_donor_given_ref and P_donor_given_alt is the proportion of observed alleles that came
     # from that donor -- normalized to the total counts of REF / ALT at that
     # SNP (it is relative to the total number of reference or alt alleles at
     # that SNP across the donor population)
@@ -267,7 +267,7 @@ def main():
             # get loglikelihood functions
             if args.likelihood_method == 'our_method':
                 barcode_log_likelihood = generate_barcode_lls(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
-                                                              genotypes, donors, num_donors, ref_probs, alt_probs,
+                                                              genotypes, donors, num_donors, P_donor_given_ref, P_donor_given_alt,
                                                               simplified_region_name)
             else:
                 barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],

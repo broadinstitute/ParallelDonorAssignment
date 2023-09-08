@@ -64,7 +64,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
 
     return barcode_log_likelihood
 
-
+@profile
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
         [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k]
@@ -230,9 +230,15 @@ def main():
     #
     donor_ref_cts = pd.DataFrame(index=genotypes.index, columns=donors)
     donor_alt_cts = pd.DataFrame(index=genotypes.index, columns=donors)
+    donor_missing_cts = pd.DataFrame(index=genotypes.index, columns=donors)
     for col in donors:
         donor_ref_cts[col] = genotypes[col].str.count('0')
         donor_alt_cts[col] = genotypes[col].str.count('1')
+
+        # Fill missing counts with average of non-missing ref and alt counts. (sum ref_cts / n) + (sum alt_cts / n) = 2
+        missing_cts_fil = (donor_ref_cts[col] + donor_alt_cts[col]) != 2
+        donor_ref_cts.loc[missing_cts_fil, col] = donor_ref_cts.loc[~missing_cts_fil, col].mean()
+        donor_alt_cts.loc[missing_cts_fil, col] = donor_alt_cts.loc[~missing_cts_fil, col].mean()
     print("Genotypes to counts done.")
 
     # ref_probs and alt_probs is the proportion of observed alleles that came

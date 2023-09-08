@@ -110,7 +110,7 @@ task region_donor_log_likelihoods {
 
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         # Sometimes fails, so we use a retry mechanism
-        for i in {1..3}; do
+        for i in $(seq 1 5); do
             echo "Attempt" $i
             gcloud auth print-access-token > token.txt
             export HTS_AUTH_LOCATION="token.txt"

@@ -21,8 +21,8 @@ class count_variants_on_region:
     def count(self, output_file):
         bamfile = pysam.AlignmentFile(self.bam_path, mode="rb", ignore_truncation=True)
         fid = gzip.open(output_file, 'at')
-        for idx, bam_line in enumerate(bamfile):
-            if bam_line.mapping_quality != 255:  # unique mapping
+        for bam_line in bamfile:
+            if bam_line.mapping_quality < 20:
                 continue
             try:  # CB tag isn't always present
                 barcode = bam_line.get_tag('CB')
@@ -32,6 +32,7 @@ class count_variants_on_region:
                     UMI = bam_line.query_name
             except Exception:
                 continue
+
             for read_idx, genome_pos in bam_line.get_aligned_pairs(matches_only=True):
                 # see if a read overlaps a snp site, and if it does print out
                 # what you read (location of the snp overlap, base that was

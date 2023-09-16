@@ -4,10 +4,10 @@ import argparse
 
 
 class count_variants_on_region:
-    def __init__(self, bam_path, vcf_path, umi_tag):
+    def __init__(self, bam_path, vcf_path, umi_tag='UB'):
         self.bam_path = bam_path
         self.vcf_path = vcf_path
-        self.umi_tag = (umi_tag if umi_tag is not None else 'UB')
+        self.umi_tag = umi_tag
         self.variants = {}
 
         assert (self.umi_tag != '') and not (self.umi_tag is None)
@@ -23,8 +23,8 @@ class count_variants_on_region:
     def count(self, output_file):
         bamfile = pysam.AlignmentFile(self.bam_path, mode="rb", ignore_truncation=True)
         fid = gzip.open(output_file, 'at')
-        for bam_line in bamfile:
-            if bam_line.mapping_quality < 20:
+        for idx, bam_line in enumerate(bamfile):
+            if bam_line.mapping_quality != 255:  # unique mapping
                 continue
             try:  # CB tag isn't always present
                 barcode = bam_line.get_tag('CB')

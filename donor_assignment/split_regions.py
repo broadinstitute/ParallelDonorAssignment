@@ -1,18 +1,12 @@
 import bamnostic
 import argparse
 import pysam
+import numpy as np
 
 
 def include_contig_in_analysis(name):
-    try:
-        int(name[3:])
-        return name[:3] == 'chr'
-    except ValueError:
-        try:
-            int(name)
-            return True
-        except ValueError:
-            return False
+    return (name.isnumeric() or
+            (name[:3] == 'chr' and name[3:].isnumeric()))
 
 
 def iterate_bai_intervals(bai_file, contig_lookup):
@@ -21,18 +15,25 @@ def iterate_bai_intervals(bai_file, contig_lookup):
     # for each interval, the linear contains the smallest file offset of the
     # alignments that overlap with the interval
     # the value 16384 is available as bai._LINEAR_INDEX_WINDOW
+    starts = {}
+    for ref_id in range(bai_file.n_refs):
+        try:
+            starts[ref_id] = bai_file.get_ref(ref_id).intervals[0]
+        except IndexError:
+            pass  # if ref_id is not in the bai
+
     for ref_id in range(bai_file.n_refs):
         if not include_contig_in_analysis(contig_lookup[ref_id]):
             continue
-        intervals = bai_file.get_ref(ref_id).intervals
+        intervals = list(bai_file.get_ref(ref_id).intervals)
+        # tack on the start of next contig if available
+        if ref_id + 1 in starts:
+            intervals += [starts[ref_id + 1]]
         # each array element is int64, with the first 48 bits indicating the
         # position in the compressed file, and the last 16 bits the offset
         # after decompression; we use the compressed file offset
         interval_starts = [interval >> 16 for interval in intervals]
-        start = interval_starts[0]
-        end = interval_starts[-1]
-        size = end - start
-        yield ref_id, intervals, interval_starts, start, end, size
+        yield ref_id, np.array(interval_starts)
 
 
 def main():
@@ -42,39 +43,42 @@ def main():
     parser.add_argument("num_splits", type=int)
     args = parser.parse_args()
 
-    BAI_PATH = args.BAI_PATH  # 'gs://nnfc-hgrm-output/tes/possorted_genome_bam.bam.bai'
+    BAI_PATH = args.BAI_PATH  # 'gs://nnfc-hgrm-output/test/possorted_genome_bam.bam.bai'
     contig_lookup = dict(enumerate(pysam.AlignmentFile(args.contigs).references))  # arg.contigs == header.sam
     target_num_jobs = args.num_splits
 
     bai = bamnostic.bai.Bai(BAI_PATH)
-    # contig_lookup = get_contigs(bam_path)
-    total_size = sum([size for _, _, _, _, _, size in iterate_bai_intervals(bai, contig_lookup)])
+    total_size = sum([(v[-1] - v[0]) for _, v in iterate_bai_intervals(bai, contig_lookup)])
 
-    # target_num_jobs = 100
     size_per_job = total_size / target_num_jobs
-    size_done = 0
-    regions_per_thread = [[]]
-    for ref_id, intervals, interval_starts, start, end, size in iterate_bai_intervals(bai, contig_lookup):
+
+    jobs = []
+    for ref_id, intervals in iterate_bai_intervals(bai, contig_lookup):
         contig_name = contig_lookup[ref_id]
-        regions_per_thread[-1].append([contig_name, 1, 0])
-        while size_done + size > size_per_job:
-            idx = min([idx for idx, interval_start in enumerate(interval_starts)
-                       if size_done + interval_start - start > size_per_job])
-            locus = idx * bai._LINEAR_INDEX_WINDOW
-            size_done += interval_starts[idx] - start
-            start = interval_starts[idx]
-            size = end - start
-            regions_per_thread[-1][-1][2] = locus
-            regions_per_thread.append([[contig_name, locus, 0]])
-            size_done = 0
-        regions_per_thread[-1][-1][2] = len(intervals) * bai._LINEAR_INDEX_WINDOW
-        size_done += size
-    print(len(regions_per_thread))
+        start_interval_idx = 0
+        next_interval_idx = 0
+        while next_interval_idx < len(intervals):
+            chunk_size = intervals[next_interval_idx] - intervals[start_interval_idx]
+            if (chunk_size > size_per_job):
+                jobs.append([contig_name,
+                             start_interval_idx * bai._LINEAR_INDEX_WINDOW,
+                             next_interval_idx  * bai._LINEAR_INDEX_WINDOW,
+                             intervals[start_interval_idx],
+                             intervals[next_interval_idx]])
+                start_interval_idx = next_interval_idx
+            else:
+                next_interval_idx += 1
+        if start_interval_idx < len(intervals) - 1:
+            jobs.append([contig_name,
+                         start_interval_idx * bai._LINEAR_INDEX_WINDOW,
+                         next_interval_idx  * bai._LINEAR_INDEX_WINDOW,
+                         intervals[start_interval_idx],
+                         intervals[next_interval_idx - 1]])
+    assert len(jobs)
 
     with open('list_of_regions.txt', 'w') as fh:
-        for region in regions_per_thread:
-            region = region[0]
-            fh.write(f"{region[0]}:{region[1]}-{region[2]}\n")
+        for contig, start, end, byte_start, byte_end in jobs:
+            fh.write(f"{contig}:{start}-{end} bytes:{byte_start}-{byte_end - 1}\n")  # inclusive ranges
 
 
 if __name__ == '__main__':

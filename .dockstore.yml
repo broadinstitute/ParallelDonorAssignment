@@ -18,5 +18,6 @@ workflows:
         branches:
           - main
           - bram-dev
+          - bgzblocks
         tags:
           - /.*/

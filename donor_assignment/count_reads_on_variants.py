@@ -4,9 +4,10 @@ import argparse
 
 
 class count_variants_on_region:
-    def __init__(self, bam_path, vcf_path):
+    def __init__(self, bam_path, vcf_path, umi_tag):
         self.bam_path = bam_path
         self.vcf_path = vcf_path
+        self.umi_tag = (umi_tag if umi_tag is not None else 'UB')
         self.variants = {}
 
     def load_vcf(self):
@@ -18,14 +19,17 @@ class count_variants_on_region:
             self.variants[pos] = ref
 
     def count(self, output_file):
-        bamfile = pysam.AlignmentFile(self.bam_path, mode="rb")
+        bamfile = pysam.AlignmentFile(self.bam_path, mode="rb", ignore_truncation=True)
         fid = gzip.open(output_file, 'at')
-        for idx, bam_line in enumerate(bamfile):
-            if bam_line.mapping_quality != 255:  # unique mapping
+        for bam_line in bamfile:
+            if bam_line.mapping_quality < 20:
                 continue
             try:  # CB tag isn't always present
                 barcode = bam_line.get_tag('CB')
-                UMI = bam_line.get_tag('UB')
+                if self.umi_tag != 'ATAC':
+                    UMI = bam_line.get_tag(self.umi_tag)
+                else:
+                    UMI = bam_line.query_name
             except Exception:
                 continue
 
@@ -45,12 +49,13 @@ def main():
     parser = argparse.ArgumentParser(description="Count the reads on variants")
     parser.add_argument("BAM_region", type=argparse.FileType('r'))
     parser.add_argument("VCF_region", type=argparse.FileType('r'))
+    parser.add_argument("--umi-tag", type=str, help='optional argument for UMI tag in BAM, or "ATAC" to use read name')
     args = parser.parse_args()
     bam_file = args.BAM_region
     vcf_file = args.VCF_region
 
     output_file = 'results.tsv.gz'
-    c2d = count_variants_on_region(bam_file, vcf_file)
+    c2d = count_variants_on_region(bam_file, vcf_file, args.umi_tag)
     c2d.load_vcf()
     c2d.count(output_file)
 

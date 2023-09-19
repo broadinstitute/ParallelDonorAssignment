@@ -57,7 +57,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
     num_umi_snps = umi_probs_position_index.groupby(['barcode']).size()
     num_snps = umi_probs_position_index.groupby(['barcode'])['snp_id'].nunique()
     num_umis = umi_probs_position_index.reset_index().groupby('barcode')['UMI'].nunique()
-    
+
     barcode_log_likelihood['num_umi_snps'] = num_umi_snps
     barcode_log_likelihood['num_snps'] = num_snps
     barcode_log_likelihood['num_umis'] = num_umis
@@ -72,9 +72,7 @@ def calculate_donor_liks(df, donors):
             [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] are the loglikelihoods for each barcode-umi-pos,
                 calculated from the base observed in @function dropulation_likelihoods
     """
-    # treat donors with no genotype at that location as equally likely for ref, alt, or het
-    # this effectively diminishes the overall likelihood that the umi came from that donor
-    #   -- I'm not sure that's true.  It would make them more likely than the lowest likelihood set (-Ray)
+    # donors with no genotype get average population likelihood
     donor_ref_liks = df.ref_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'ref')
     donor_alt_liks = df.alt_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'alt')
     donor_het_liks = df.het_loglikelihood.values.reshape(-1, 1) * (df[donors] == 'het')
@@ -101,7 +99,7 @@ def dropulation_likelihoods(barcode_reads, genotypes, refs_df, alt_df, donors, e
     # Annotate REF and ALT with the genotype data (merge is slow)
     tmp_genotypes = genotypes.reset_index().rename(columns={'chrom': 'chr'})[['chr', 'pos', 'REF', 'ALT']]
     intermediate_df = intermediate_df.merge(tmp_genotypes, on=['chr', 'pos'])
-    
+
     if intermediate_df.empty:
         return None
 
@@ -267,7 +265,7 @@ def main():
             else:
                 barcode_log_likelihood = dropulation_likelihoods(barcode_reads[barcode_reads.barcode.isin(cur_cbcs)],
                                                                  genotypes, refs_df, alt_df, donors)
-                
+
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
             if barcode_log_likelihood is not None:

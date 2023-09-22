@@ -66,6 +66,7 @@ def generate_barcode_lls(barcode_pos_reads, genotypes, donors, num_donors,
 
     return barcode_log_likelihood
 
+@profile
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
         [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k]
@@ -89,7 +90,7 @@ def calculate_donor_liks(df, donors):
     donor_liks['barcode'] = df.barcode
     return donor_liks.groupby(['barcode']).sum()
 
-
+@profile
 def dropulation_likelihoods(barcode_reads, genotypes, donor_ref_cts, donor_alt_cts, donors, error_rate=0.001, het_rate=0.5):
     """ Calculate the cell-donor loglikelihoods using dropulation methods"""
     intermediate_df = barcode_reads.reset_index().copy()
@@ -147,7 +148,7 @@ def dropulation_likelihoods(barcode_reads, genotypes, donor_ref_cts, donor_alt_c
     donor_likelihoods['num_snps'] = umi_snp_counts.pos.sum()
     return donor_likelihoods
 
-
+@profile
 def main():
     #
     # Read in args
@@ -256,7 +257,7 @@ def main():
     #####
 
     num_donors = len(donors)
-    with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.txt.gz", "wb") as outf:
+    with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.{args.likelihood_method}.txt.gz", "wb") as outf:
         # Split read info into chunks with all the info for a group of CBCs to
         # save memory, then get per CBC likelihoods and write them out
         barcode_reads = single_base_uniq_reads.reset_index('barcode')

@@ -4,6 +4,8 @@ workflow cisvar {
     input {
         File BAM
         File VCF
+        String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
+        String git_branch = "main"
     }
 
     call est_cisvar {
@@ -11,7 +13,9 @@ workflow cisvar {
         BAM="~{BAM}",
         VCF="~{VCF}",
         bam_size=size(BAM, "GB"),
-        vcf_size=size(VCF, "GB")
+        vcf_size=size(VCF, "GB"),
+        docker_image=docker_image,
+        git_branch=git_branch
     }
     output {
         File donor_weights = est_cisvar.donor_weights
@@ -27,12 +31,15 @@ task est_cisvar {
         Int min_coverage = 20
         Float bam_size
         Float vcf_size
+        String docker_image
+        String git_branch
     }
 
     Int disk_size = ceil(bam_size * 2.5 + vcf_size * 2) + 25
 
     command {
         set -ex
+        (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         ## Work from google buckets directly for faster startup
         ## from https://support.terra.bio/hc/en-us/community/posts/16214505476507-How-to-run-samtools-on-gs-object-directly-to-get-a-BAM-slice-fast-for-example-
         gcloud auth print-access-token > token.txt
@@ -55,7 +62,7 @@ task est_cisvar {
         File snp_estimates = "cisvar_estimates.txt.gz"
     }
     runtime {
-        docker: "us.gcr.io/landerlab-atacseq-200218/donor_assign:0.8"
+        docker: docker_image
         cpu: 4
         memory: "64GB"
         disks: "local-disk ~{disk_size} HDD"

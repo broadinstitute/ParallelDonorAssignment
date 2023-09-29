@@ -56,7 +56,6 @@ def new_generate_barcode_lls(barcode_reads, donors, fill_donor_alt_cts, error_ra
 
     return barcode_lkl_df
 
-
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
         [barcode] [chr] [pos] [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] [donor_i ... donor_k]
@@ -64,14 +63,10 @@ def calculate_donor_liks(df, donors):
             [ref_loglikelihood] [alt_loglikelihood] [het_loglikelihood] are the loglikelihoods for each barcode-umi-pos,
                 calculated from the base observed in @function dropulation_likelihoods
     """
-
-    # treat donors with no genotype at that location as equally likely for ref, alt, or het
-    # this effectively diminishes the overall likelihood that the umi came from that donor
-    #   -- I'm not sure that's true.  It would make them more likely than the lowest likelihood set (-Ray)
+    # donors with no genotype get average population likelihood
     donor_ref_liks = df.ref_loglikelihood.values.reshape(-1, 1) * (df[donors] == 0)
     donor_alt_liks = df.alt_loglikelihood.values.reshape(-1, 1) * (df[donors] == 2)
     donor_het_liks = df.het_loglikelihood.values.reshape(-1, 1) * (df[donors] == 1)
-
     donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
 
     # fill the 0 values (no genotype) with the population average LL, not including those 0s

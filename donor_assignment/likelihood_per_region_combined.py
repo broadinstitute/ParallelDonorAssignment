@@ -10,12 +10,13 @@ def single_base(read):
     return len(set(read)) == 1
 
 @profile
-def new_generate_barcode_lls(barcode_reads, donors, fill_donor_alt_cts, error_rate):
+def new_generate_barcode_lls(barcode_reads, donors, fill_donor_alt_cts, error_rate, regularize_factor=0.95):
 
     # Probability of neither REF or ALT base
     prob_neither = 2 * error_rate / 3 / len(donors)
     
     # Donor population probability adjustment
+    # score for donor given genotype = (ref_prob * num_ref_in_donor / cohort_num_ref) + (alt_prob * num_alt_in_donor / cohort_num_alt
     barcode_reads['score_donor_ref'] = barcode_reads.ref_prob * 2 / barcode_reads.adj_num_donor_ref_alleles + prob_neither
     barcode_reads['score_donor_alt'] = barcode_reads.alt_prob * 2 / barcode_reads.adj_num_donor_alt_alleles + prob_neither
     barcode_reads['score_donor_het'] = (
@@ -31,7 +32,10 @@ def new_generate_barcode_lls(barcode_reads, donors, fill_donor_alt_cts, error_ra
     score_umi_snp_donor_ref_df = barcode_reads.score_donor_ref.values.reshape(-1, 1) * (fill_donor_alt_cts.loc[barcode_reads.pos, donors] == 0)
     score_umi_snp_donor_alt_df = barcode_reads.score_donor_alt.values.reshape(-1, 1) * (fill_donor_alt_cts.loc[barcode_reads.pos, donors] == 2)
     score_umi_snp_donor_het_df = barcode_reads.score_donor_het.values.reshape(-1, 1) * (fill_donor_alt_cts.loc[barcode_reads.pos, donors] == 1)
-    score_umi_snp_donor_missing_df = barcode_reads.score_donor_missing.values.reshape(-1, 1) * (fill_donor_alt_cts.loc[barcode_reads.pos, donors].isna())
+    score_umi_snp_donor_missing_df = \
+        barcode_reads.score_donor_missing.values.reshape(-1, 1) * \
+        (fill_donor_alt_cts.loc[barcode_reads.pos, donors].isna())
+    
     score_umi_snp_donors_df = score_umi_snp_donor_ref_df + \
         score_umi_snp_donor_alt_df + \
         score_umi_snp_donor_het_df + \
@@ -39,19 +43,19 @@ def new_generate_barcode_lls(barcode_reads, donors, fill_donor_alt_cts, error_ra
 
     # regularize
     reg_score_umi_snp_donors_df = score_umi_snp_donors_df.copy()
-    reg_score_umi_snp_donors_df *= 0.95
-    reg_score_umi_snp_donors_df += 0.05 / len(donors)
+    reg_score_umi_snp_donors_df *= regularize_factor
+    reg_score_umi_snp_donors_df += (1 - regularize_factor) / len(donors)
     reg_score_umi_snp_donors_df = np.log(reg_score_umi_snp_donors_df)
     reg_score_umi_snp_donors_df = pd.concat([barcode_reads, reg_score_umi_snp_donors_df[donors].reset_index(drop=True)], axis=1)
 
-    # group barcode
+    # group and sum by barcodes
     barcode_lkl_df = reg_score_umi_snp_donors_df.groupby('barcode')[donors].sum()
     barcode_groupby = reg_score_umi_snp_donors_df.groupby('barcode')
     barcode_lkl_df['num_umi_snps'] = barcode_groupby.size()
     barcode_lkl_df['num_umis'] = barcode_groupby['UMI'].nunique()
     barcode_lkl_df['num_snps'] = barcode_groupby['pos'].nunique()
 
-    return barcode_lkl_df, reg_score_umi_snp_donors_df
+    return barcode_lkl_df, reg_score_umi_snp_donors_df, score_umi_snp_donors_df
 
 def calculate_donor_liks(df, donors):
     """ Calculate donor likelihoods, given a df with columns:
@@ -69,9 +73,9 @@ def calculate_donor_liks(df, donors):
     donor_liks = donor_ref_liks + donor_het_liks + donor_alt_liks
 
     # fill the 0 values (no genotype) with the population average LL, not including those 0s
-    # donor_liks[df[donors] == 'none'] = np.nan
+    donor_liks[df[donors].isna()] = np.nan
     donor_nogt_liks = donor_liks.mean(axis=1).values.reshape(-1, 1) * (df[donors].isna())
-    donor_liks = donor_liks + donor_nogt_liks
+    donor_liks = donor_liks.fillna(0) + donor_nogt_liks
 
     donor_liks['barcode'] = df.barcode
     return donor_liks.groupby(['barcode']).sum()
@@ -194,7 +198,7 @@ def main():
     genotypes['num_donor_ref_alleles'] = 2 * fill_donor_alt_cts.notna().sum(axis=1) - genotypes['num_donor_alt_alleles']
     genotypes['num_donor_missing'] = fill_donor_alt_cts.isna().sum(axis=1)
     genotypes['mean_alt_count'] = genotypes['num_donor_alt_alleles'] / (genotypes[['num_donor_alt_alleles', 'num_donor_ref_alleles']].sum(axis=1))
-    genotypes['adj_num_donor_alt_alleles'] = genotypes.num_donor_alt_alleles + genotypes.mean_alt_count * fill_donor_alt_cts.isna().sum(axis=1)
+    genotypes['adj_num_donor_alt_alleles'] = genotypes.num_donor_alt_alleles + genotypes.mean_alt_count * genotypes.num_donor_missing
     genotypes['adj_num_donor_ref_alleles'] = genotypes.num_donor_ref_alleles + (2 - genotypes.mean_alt_count) * genotypes.num_donor_missing
 
     short_genotypes = genotypes.reset_index().rename(
@@ -204,7 +208,7 @@ def main():
         'num_donor_missing', 'mean_alt_count', 'adj_num_donor_alt_alleles', 'adj_num_donor_ref_alleles'
     ]]
 
-    with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.{args.likelihood_method}.combined.txt.gz", "wb") as outf:
+    with gzip.open(f"barcode_log_likelihood_{simplified_region_name}.{args.likelihood_method}.combined.txt.gz", "wb") as outf, gzip.open(f"barcode_log_likelihood_{simplified_region_name}.{args.likelihood_method}.umi.combined.txt.gz", "wb") as umi_outf:
         #
         # Split read info into chunks with all the info for a group of CBCs to
         # save memory, then get per CBC likelihoods and write them out
@@ -233,9 +237,10 @@ def main():
             
             # get loglikelihood functions
             if args.likelihood_method == 'our_method':
-                barcode_log_likelihood, reg_donor_scores_df = new_generate_barcode_lls(
+                barcode_log_likelihood, reg_donor_scores_df, prereg_donor_scores_df = new_generate_barcode_lls(
                     subset_barcode_reads, donors, fill_donor_alt_cts, error_rate
                 )
+                prereg_donor_scores_df.to_csv(umi_outf, header=first_block, sep='\t')
             else:
                 barcode_log_likelihood = dropulation_likelihoods(
                     subset_barcode_reads, donors, fill_donor_alt_cts

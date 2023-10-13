@@ -12,7 +12,7 @@ workflow donor_assign {
         String? UMI_tag
         Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
-        String git_branch = "dropulation_likelihoods"
+        String git_branch = "main"
     }
 
     Int bam_split_size = floor(size(BAM, "GB") / num_splits)

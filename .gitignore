@@ -1,2 +1,5 @@
 testing/
 *~
+data/*
+test/
+.ipynb/*

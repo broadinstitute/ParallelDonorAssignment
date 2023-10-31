@@ -10,6 +10,8 @@ class count_variants_on_region:
         self.umi_tag = (umi_tag if umi_tag is not None else 'UB')
         self.variants = {}
 
+        assert (self.umi_tag != '') and not (self.umi_tag is None)
+
     def load_vcf(self):
         vcf = pysam.VariantFile(self.vcf_path)
         # this should store the read's position and if it's ref or alt

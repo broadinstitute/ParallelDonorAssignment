@@ -220,9 +220,16 @@ def main():
                               names="chrom pos type REF ALT".split() + donors)
     genotypes = genotypes.sort_values("chrom pos".split())
     genotypes = genotypes.set_index(['pos'])
+
+    # drop INDELs
+    genotypes = genotypes[genotypes.type != 'INDEL']
+    # check number of repeat positions
+    if genotypes.index.duplicated(keep=False).sum() / genotypes.index.shape[0] > 0.05:
+        raise ValueError("Genotype VCF contains too many (> 5%) repeat positions.")
+    # drop duplicates
+    genotypes = genotypes[~genotypes.index.duplicated(keep=False)]
+
     print(f"Read genotypes for {len(genotypes)} SNPs and {len(donors)} donors")
-    print("Repeat genotype positions in genotype df:")
-    print(genotypes[genotypes.index.duplicated(keep=False)].iloc[:, :5])
 
     #
     # Generate ref and alt counts dfs
@@ -241,8 +248,6 @@ def main():
     # that SNP across the donor population)
     ref_probs = refs_df.div(refs_df.sum(axis=1), axis=0)
     alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
-    print("Repeat positions in ref probs, at assertion step:")
-    print(ref_probs[ref_probs.index.duplicated(keep=False)].index)
     assert ref_probs.index.is_unique
 
     #####

@@ -239,6 +239,7 @@ def main():
     # that SNP across the donor population)
     ref_probs = refs_df.div(refs_df.sum(axis=1), axis=0)
     alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
+    print(ref_probs[ref_probs.index.duplicated(keep=False)].index)
     assert ref_probs.index.is_unique
 
     #####

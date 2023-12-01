@@ -224,7 +224,7 @@ def main():
     # drop INDELs
     genotypes = genotypes[genotypes.type != 'INDEL']
     # check number of repeat positions
-    if genotypes.index.duplicated(keep=False).sum() / genotypes.index.shape[0] > 0.05:
+    if genotypes.index.shape[0] > 100 and genotypes.index.duplicated(keep=False).sum() / genotypes.index.shape[0] > 0.05:
         raise ValueError("Genotype VCF contains too many (> 5%) repeat positions.")
     # drop duplicates
     genotypes = genotypes[~genotypes.index.duplicated(keep=False)]

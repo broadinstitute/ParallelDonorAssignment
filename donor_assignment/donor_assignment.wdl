@@ -172,18 +172,18 @@ task gather_region_donor_log_likelihoods {
     command {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
-        python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} ~{total_likelihoods} {min_UMIs}
+        python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} ~{total_likelihoods} ~{min_UMIs}
 
         pip3 install matplotlib --break-system-packages
-        python3 -u /app/donor_assignment/doublet_detection_image.py ~{total_likelihoods} ${donor_list_file} ~{"--threshold=" + singlet_threshold} \
+        python3 -u /app/donor_assignment/doublet_detection_image.py ~{total_likelihoods} ~{donor_list_file} ~{"--threshold=" + singlet_threshold} \
                 ~{"--prefix=" + file_prefix}
     }
 
     output {
         File total_barcode_donor_likelihoods = total_likelihoods
-        File loglik_per_umi_plot = prefix + '.loglik_per_umi_plot.png'
-        File loglik_per_umi_histogram = prefix + '.loglik_per_umi_histogram.png'
-        File singlets = prefix + '.singlets.txt'
+        File loglik_per_umi_plot = file_prefix + '.loglik_per_umi_plot.png'
+        File loglik_per_umi_histogram = file_prefix + '.loglik_per_umi_histogram.png'
+        File singlets = file_prefix + '.singlets.txt'
     }
 
     runtime {

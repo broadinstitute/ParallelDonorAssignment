@@ -39,6 +39,10 @@ def combine_iterators(iters):
 if __name__ == '__main__':
     barcode_likelihood_files = sys.argv[1]
     output_file_path = sys.argv[2]
+    if len(sys.argv) == 4:
+        min_umis = int(sys.argv[3])
+    else:
+        min_umis = 0
     per_line_iterators = [line_iterator(ln.strip()) for ln in open(barcode_likelihood_files)]
     first_line = True
     with gzip.open(output_file_path, "wt") as outf:
@@ -46,4 +50,5 @@ if __name__ == '__main__':
             if first_line:
                 outf.write("barcode\t" + "\t".join(vals.index) + "\n")
                 first_line = False
-            outf.write(bc + "\t" + "\t".join(vals.astype(str).values) + "\n")
+            if vals.num_umis >= min_umis:
+                outf.write(bc + "\t" + "\t".join(vals.astype(str).values) + "\n")

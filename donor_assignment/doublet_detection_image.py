@@ -18,7 +18,7 @@ params = {
 pylab.rcParams.update(params)
 
 
-def generate_loglik_per_umi_fig(sample_best_LL, thresh):
+def generate_loglik_per_umi_fig(sample_best_LL, thresh, prefix=None):
     fig, ax = plt.subplots(figsize=(9, 7))
     hb = ax.hexbin(
         sample_best_LL.LogLikperUMI,
@@ -34,7 +34,10 @@ def generate_loglik_per_umi_fig(sample_best_LL, thresh):
     
     plt.xticks(rotation=30)
     plt.tight_layout()
-    plt.savefig("loglik_per_umi_plot.png", dpi=200)
+    if prefix is None:
+        plt.savefig("loglik_per_umi_plot.png", dpi=200)
+    else:
+        plt.savefig(prefix + ".loglik_per_umi_plot.png", dpi=200)
 
 
 def threshold_otsu(x, *args, **kwargs):
@@ -67,7 +70,7 @@ def threshold_otsu(x, *args, **kwargs):
     return threshold
 
 
-def get_singlets(sample_best_LL, thresh):
+def get_singlets(sample_best_LL, thresh, prefix=None):
 
     fig, ax = plt.subplots(figsize=(9, 7))
     ax.hist(sample_best_LL.LogLikperUMI, bins=30)
@@ -80,13 +83,20 @@ def get_singlets(sample_best_LL, thresh):
         fontsize=25,
     )
     plt.tight_layout()
-    plt.savefig("loglik_per_umi_histogram.png", dpi=200)
+
+    if prefix is None:
+        plt.savefig("loglik_per_umi_histogram.png", dpi=200)
+    else:
+        plt.savefig(prefix + ".loglik_per_umi_histogram.png", dpi=200)
 
     singlets = sample_best_LL[sample_best_LL.LogLikperUMI > thresh]
     # save singlets df
-    singlets.reset_index()["barcode bestSample".split()].to_csv(
-        "singlets.txt", index=None, sep="\t"
-    )
+    if prefix is None:
+        singlets.reset_index()["barcode bestSample".split()].to_csv(
+            "singlets.txt", index=None, sep="\t")
+    else:
+        singlets.reset_index()["barcode bestSample".split()].to_csv(
+            prefix + ".singlets.txt", index=None, sep="\t")
 
 
 def main():
@@ -96,6 +106,7 @@ def main():
     parser.add_argument("cell_donor_likelihoods", type=str)
     parser.add_argument("donor_names", type=str)
     parser.add_argument("--threshold", type=float, help='optional argument for pre-set singlet threshold')
+    parser.add_argument("--prefix", type=str, help='prefix for output files (implicit . added after prefix)')
     args = parser.parse_args()
 
     cell_donor_lls = pd.read_table(args.cell_donor_likelihoods)
@@ -120,9 +131,9 @@ def main():
         thresh = threshold_otsu(sample_best_LL.LogLikperUMI)
     else:
         thresh = args.threshold
-        
-    generate_loglik_per_umi_fig(sample_best_LL, thresh)
-    get_singlets(sample_best_LL, thresh)
+
+    generate_loglik_per_umi_fig(sample_best_LL, thresh, args.prefix)
+    get_singlets(sample_best_LL, thresh, args.prefix)
 
 
 if __name__ == "__main__":

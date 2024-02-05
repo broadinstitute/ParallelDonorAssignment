@@ -4,12 +4,14 @@ workflow donor_assign {
     input {
         File BAI
         File BAM
+        String file_prefix
         Int num_splits
         File VCF
         File donor_list_file
         File whitelist
         String likelihood_method
         String? UMI_tag
+        Int min_UMIs = 25
         Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
         String git_branch = "main"
@@ -50,7 +52,9 @@ workflow donor_assign {
             barcode_log_likelihood = region_donor_log_likelihoods.barcode_log_likelihood,
             files_size = size(region_donor_log_likelihoods.barcode_log_likelihood, "GB"),
             donor_list_file = donor_list_file,
+            file_prefix = file_prefix,
             singlet_threshold = singlet_threshold,
+            min_UMIs = min_UMIs,
             docker_image = docker_image,
             git_branch = git_branch
     }
@@ -155,27 +159,31 @@ task gather_region_donor_log_likelihoods {
         Array[String] barcode_log_likelihood
         Float files_size
         File donor_list_file
+        String file_prefix
         Float? singlet_threshold
+        Int min_UMIs
         String docker_image
         String git_branch
     }
 
     Int disk_size = ceil(files_size)
+    String total_likelihoods = file_prefix + ".total_barcode_donor_likelihoods.txt.gz"
 
     command {
         (git clone https://github.com/broadinstitute/ParallelDonorAssignment.git /app ; cd /app ; git checkout ${git_branch})
         bash /app/monitor_script.sh &
-        python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} total_barcode_donor_likelihoods.txt.gz
+        python3 -u /app/donor_assignment/gather_barcode_likelihoods.py ~{write_lines(barcode_log_likelihood)} ~{total_likelihoods} {min_UMIs}
 
         pip3 install matplotlib --break-system-packages
-        python3 -u /app/donor_assignment/doublet_detection_image.py total_barcode_donor_likelihoods.txt.gz ${donor_list_file} ~{"--threshold=" + singlet_threshold}
+        python3 -u /app/donor_assignment/doublet_detection_image.py ~{total_likelihoods} ${donor_list_file} ~{"--threshold=" + singlet_threshold} \
+                ~{"--prefix=" + file_prefix}
     }
 
     output {
-        File total_barcode_donor_likelihoods = 'total_barcode_donor_likelihoods.txt.gz'
-        File loglik_per_umi_plot = 'loglik_per_umi_plot.png'
-        File loglik_per_umi_histogram = 'loglik_per_umi_histogram.png'
-        File singlets = 'singlets.txt'
+        File total_barcode_donor_likelihoods = total_likelihoods
+        File loglik_per_umi_plot = prefix + '.loglik_per_umi_plot.png'
+        File loglik_per_umi_histogram = prefix + '.loglik_per_umi_histogram.png'
+        File singlets = prefix + '.singlets.txt'
     }
 
     runtime {

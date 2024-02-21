@@ -265,8 +265,10 @@ def main():
     # any snp positions that don't overlap between the genotypes matrix and currently covered snps in this region
         # get filled with coverage of 0
     coverage_entropy_df = pd.concat([position_coverage, snp_entropy], keys=['coverage', 'snp_entropy'], axis=1).fillna(0)
-    snp_total_entropy = coverage_entropy_df.coverage * coverage_entropy_df.snp_entropy
-
+    # drop any snps with 0 coverage
+    coverage_entropy_df = coverage_entropy_df[coverage_entropy_df.coverage != 0]
+    coverage_entropy_df['snp_total_entropy'] = coverage_entropy_df.coverage * coverage_entropy_df.snp_entropy
+    coverage_entropy_df.to_csv("snp_entropy_{simplified_region_name}.txt.gz", sep='\t')
 
     #####
     # Generate barcode loglikelihoods, and write to output file

@@ -22,7 +22,7 @@ workflow donor_assign {
 
     call generate_regions {
         input:
-            BAI = BAI, 
+            BAI = BAI,
             BAM_PATH = "~{BAM}",
             num_splits = num_splits,
             docker_image = docker_image,
@@ -61,11 +61,12 @@ workflow donor_assign {
 
     output {
         Array[String] regions_list = generate_regions.regions_list
-        Array[File] region_barcode_log_likelihood_list = region_donor_log_likelihoods.barcode_log_likelihood 
+        Array[File] region_barcode_log_likelihood_list = region_donor_log_likelihoods.barcode_log_likelihood
         File total_barcode_donor_likelihoods = gather_region_donor_log_likelihoods.total_barcode_donor_likelihoods
         File loglik_per_umi_plot = gather_region_donor_log_likelihoods.loglik_per_umi_plot
         File loglik_per_umi_histogram = gather_region_donor_log_likelihoods.loglik_per_umi_histogram
         File singlets = gather_region_donor_log_likelihoods.singlets
+        Array[File] snp_entropy = region_donor_log_likelihoods.snp_entropy
     }
 }
 
@@ -142,6 +143,7 @@ task region_donor_log_likelihoods {
 
     output {
       File barcode_log_likelihood = glob("barcode_log_likelihood_*.txt.gz")[0]
+      File snp_entropy = glob("snp_entropy_*.txt.gz")[0]
     }
 
     runtime {

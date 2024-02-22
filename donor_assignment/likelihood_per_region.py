@@ -268,7 +268,7 @@ def main():
     # drop any snps with 0 coverage
     coverage_entropy_df = coverage_entropy_df[coverage_entropy_df.coverage != 0]
     coverage_entropy_df['snp_total_entropy'] = coverage_entropy_df.coverage * coverage_entropy_df.snp_entropy
-    coverage_entropy_df.to_csv("snp_entropy_{simplified_region_name}.txt.gz", sep='\t')
+    coverage_entropy_df.to_csv(f"snp_entropy_{simplified_region_name}.txt.gz", sep='\t')
 
     #####
     # Generate barcode loglikelihoods, and write to output file

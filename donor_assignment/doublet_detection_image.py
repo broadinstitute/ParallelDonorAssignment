@@ -31,7 +31,7 @@ def generate_loglik_per_umi_fig(sample_best_LL, thresh, prefix=None):
     ax.set_xlabel("LogLik per UMI")
     ax.set_ylabel("num UMIs")
     ax.axvline(thresh, c="r")
-    
+
     plt.xticks(rotation=30)
     plt.tight_layout()
     if prefix is None:
@@ -92,11 +92,9 @@ def get_singlets(sample_best_LL, thresh, prefix=None):
     singlets = sample_best_LL[sample_best_LL.LogLikperUMI > thresh]
     # save singlets df
     if prefix is None:
-        singlets.reset_index()["barcode bestSample".split()].to_csv(
-            "singlets.txt", index=None, sep="\t")
+        singlets.to_csv("singlets.txt", sep="\t")
     else:
-        singlets.reset_index()["barcode bestSample".split()].to_csv(
-            prefix + ".singlets.txt", index=None, sep="\t")
+        singlets.to_csv(prefix + ".singlets.txt", sep="\t")
 
 
 def main():
@@ -118,6 +116,7 @@ def main():
         .agg(["max", "idxmax"], axis="columns")
         .rename(columns={"max": "bestLikelihood", "idxmax": "bestSample"})
     )
+    sample_best_LL['secondBestLikelihood'] = np.sort(cell_donor_lls.set_index("barcode")[new_donors].values, axis=1)[:, -2]
     sample_best_LL = sample_best_LL.merge(
         cell_donor_lls.set_index("barcode")[["num_umis", "num_snps"]],
         left_index=True,

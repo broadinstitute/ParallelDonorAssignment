@@ -278,7 +278,7 @@ def main():
             # final output is barcode_log_probs: [barcode] x [donor] loglikelihood
             # continuously add chunks of CBC likelihoods to the output file
             if barcode_log_likelihood is not None:
-                barcode_log_likelihood.round(2).to_csv(outf, header=first_block, sep='\t')
+                barcode_log_likelihood.round(3).to_csv(outf, header=first_block, sep='\t')
                 first_block = False
             else:
                 continue

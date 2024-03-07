@@ -9,6 +9,7 @@ workflows:
           - bram-dev
           - dropulation_likelihoods
           - dropulation_likelihoods_update_snp_counts
+          - simpler-combine
         tags:
           - /.*/
    - name: "cisvar"

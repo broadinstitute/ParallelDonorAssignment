@@ -1,6 +1,5 @@
 import pandas as pd
 import sys
-import gzip
 
 if __name__ == '__main__':
     barcode_likelihood_files = sys.argv[1]

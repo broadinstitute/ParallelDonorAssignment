@@ -250,26 +250,6 @@ def main():
     alt_probs = alt_df.div(alt_df.sum(axis=1), axis=0)
     assert ref_probs.index.is_unique
 
-
-    # Calculate per-SNP entropy, a metric we may use
-    # encode refs, alts, and hets as strings rather than 0|1 or 0|0 etc to get rid of any possible 0|* cases?
-    donor_snp_gts = refs_df.replace({1: "het", 2: "ref", 0: "alt"})
-    frac_ref = (donor_snp_gts == 'ref').sum(axis=1) / donor_snp_gts.shape[1]
-    frac_het = (donor_snp_gts == 'het').sum(axis=1) / donor_snp_gts.shape[1]
-    frac_alt = (donor_snp_gts == 'alt').sum(axis=1) / donor_snp_gts.shape[1]
-    # calculate snp entropy. -sum(frac * log(frac))
-    snp_entropy = - (frac_ref*np.log(frac_ref + 1e-10) + frac_het*np.log(frac_het + 1e-10) + frac_alt*np.log(frac_alt + 1e-10))
-    # calculate coverage from single_base_uniq_reads, not just the original counted reads df
-        # to be consistent with the reads that are used in the likelihood calculations below.
-    position_coverage = single_base_uniq_reads.reset_index().groupby('pos').count()['UMI']
-    # any snp positions that don't overlap between the genotypes matrix and currently covered snps in this region
-        # get filled with coverage of 0
-    coverage_entropy_df = pd.concat([position_coverage, snp_entropy], keys=['coverage', 'snp_entropy'], axis=1).fillna(0)
-    # drop any snps with 0 coverage
-    coverage_entropy_df = coverage_entropy_df[coverage_entropy_df.coverage != 0]
-    coverage_entropy_df['snp_total_entropy'] = coverage_entropy_df.coverage * coverage_entropy_df.snp_entropy
-    coverage_entropy_df.to_csv(f"snp_entropy_{simplified_region_name}.txt.gz", sep='\t')
-
     #####
     # Generate barcode loglikelihoods, and write to output file
     # final output is barcode_log_likelihood: [barcode] x [donor] loglikelihood

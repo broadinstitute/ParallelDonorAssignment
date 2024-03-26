@@ -66,7 +66,7 @@ workflow donor_assign {
         File loglik_per_umi_plot = gather_region_donor_log_likelihoods.loglik_per_umi_plot
         File loglik_per_umi_histogram = gather_region_donor_log_likelihoods.loglik_per_umi_histogram
         File singlets = gather_region_donor_log_likelihoods.singlets
-        Array[File] snp_entropy = region_donor_log_likelihoods.snp_entropy
+        File all_cell_labels = gather_barcode_likelihoods.all_cell_labels
     }
 }
 
@@ -143,7 +143,6 @@ task region_donor_log_likelihoods {
 
     output {
       File barcode_log_likelihood = glob("barcode_log_likelihood_*.txt.gz")[0]
-      File snp_entropy = glob("snp_entropy_*.txt.gz")[0]
     }
 
     runtime {
@@ -186,6 +185,7 @@ task gather_region_donor_log_likelihoods {
         File loglik_per_umi_plot = file_prefix + '.loglik_per_umi_plot.png'
         File loglik_per_umi_histogram = file_prefix + '.loglik_per_umi_histogram.png'
         File singlets = file_prefix + '.singlets.txt'
+        File all_cell_labels = file_prefix + '.all_cell_labels.txt'
     }
 
     runtime {

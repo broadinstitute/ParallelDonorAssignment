@@ -18,7 +18,7 @@ params = {
 pylab.rcParams.update(params)
 
 
-def generate_loglik_per_umi_fig(sample_best_LL, thresh, prefix=None):
+def generate_loglik_per_umi_fig(sample_best_LL, loglik_threshold, umi_threshold, prefix=None):
     fig, ax = plt.subplots(figsize=(9, 7))
     hb = ax.hexbin(
         sample_best_LL.LogLikperUMI,
@@ -30,7 +30,8 @@ def generate_loglik_per_umi_fig(sample_best_LL, thresh, prefix=None):
     fig.colorbar(hb, ax=ax, label="# of cells")
     ax.set_xlabel("LogLik per UMI")
     ax.set_ylabel("num UMIs")
-    ax.axvline(thresh, c="r")
+    ax.axvline(loglik_threshold, c="r")
+    ax.axhline(umi_threshold, c='r')
 
     plt.xticks(rotation=30)
     plt.tight_layout()
@@ -70,14 +71,14 @@ def threshold_otsu(x, *args, **kwargs):
     return threshold
 
 
-def get_singlets(sample_best_LL, thresh, prefix=None):
+def get_singlets(sample_best_LL, loglik_threshold, umi_threshold, prefix=None):
 
     fig, ax = plt.subplots(figsize=(9, 7))
     ax.hist(sample_best_LL.LogLikperUMI, bins=30)
-    ax.axvline(thresh, c="r")
+    ax.axvline(loglik_threshold, c="r")
     ax.set_xlabel("LogLikperUMI")
     ax.annotate(
-        f"Threshold: {round(thresh,3)}",
+        f"Threshold: {round(loglik_threshold,3)}",
         (0.1, 0.9),
         xycoords="axes fraction",
         fontsize=25,
@@ -89,12 +90,18 @@ def get_singlets(sample_best_LL, thresh, prefix=None):
     else:
         plt.savefig(prefix + ".loglik_per_umi_histogram.png", dpi=200)
 
-    singlets = sample_best_LL[sample_best_LL.LogLikperUMI > thresh]
+    sample_best_LL['label'] = 'singlet'
+    sample_best_LL['label'] = sample_best_LL.label.where(sample_best_LL.LogLikperUMI > loglik_threshold, 'doublet')
+    sample_best_LL['label'] = sample_best_LL.label.where(np.log10(sample_best_LL.num_umis) > umi_threshold, 'ambient')
+    singlets = sample_best_LL.query('label == "singlet"')
+
     # save singlets df
     if prefix is None:
         singlets.to_csv("singlets.txt", sep="\t")
+        sample_best_LL.to_csv("all_cell_labels.txt", sep='\t')
     else:
         singlets.to_csv(prefix + ".singlets.txt", sep="\t")
+        sample_best_LL.to_csv(prefix + ".all_cell_labels.txt", sep='\t')
 
 
 def main():
@@ -131,8 +138,9 @@ def main():
     else:
         thresh = args.threshold
 
-    generate_loglik_per_umi_fig(sample_best_LL, thresh, args.prefix)
-    get_singlets(sample_best_LL, thresh, args.prefix)
+    umi_threshold = threshold_otsu(np.log10(sample_best_LL.num_umis))
+    generate_loglik_per_umi_fig(sample_best_LL, thresh, umi_threshold, args.prefix)
+    get_singlets(sample_best_LL, thresh, umi_threshold, args.prefix)
 
 
 if __name__ == "__main__":

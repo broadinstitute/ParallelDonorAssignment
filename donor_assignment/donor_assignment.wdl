@@ -66,7 +66,7 @@ workflow donor_assign {
         File loglik_per_umi_plot = gather_region_donor_log_likelihoods.loglik_per_umi_plot
         File loglik_per_umi_histogram = gather_region_donor_log_likelihoods.loglik_per_umi_histogram
         File singlets = gather_region_donor_log_likelihoods.singlets
-        File all_cell_labels = gather_barcode_likelihoods.all_cell_labels
+        File all_cell_labels = gather_region_donor_log_likelihoods.all_cell_labels
     }
 }
 

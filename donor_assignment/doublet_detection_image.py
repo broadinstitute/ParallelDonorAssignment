@@ -18,7 +18,7 @@ params = {
 pylab.rcParams.update(params)
 
 
-def generate_loglik_per_umi_fig(sample_best_LL, loglik_threshold, umi_threshold, prefix=None):
+def generate_loglik_per_umi_fig(sample_best_LL, loglik_threshold, log10_umi_threshold, prefix=None):
     fig, ax = plt.subplots(figsize=(9, 7))
     hb = ax.hexbin(
         sample_best_LL.LogLikperUMI,
@@ -31,7 +31,7 @@ def generate_loglik_per_umi_fig(sample_best_LL, loglik_threshold, umi_threshold,
     ax.set_xlabel("LogLik per UMI")
     ax.set_ylabel("num UMIs")
     ax.axvline(loglik_threshold, c="r")
-    ax.axhline(umi_threshold, c='r')
+    ax.axhline(10**log10_umi_threshold, c='r')
 
     plt.xticks(rotation=30)
     plt.tight_layout()
@@ -71,7 +71,7 @@ def threshold_otsu(x, *args, **kwargs):
     return threshold
 
 
-def get_singlets(sample_best_LL, loglik_threshold, umi_threshold, prefix=None):
+def get_singlets(sample_best_LL, loglik_threshold, log10_umi_threshold, prefix=None):
 
     fig, ax = plt.subplots(figsize=(9, 7))
     ax.hist(sample_best_LL.LogLikperUMI, bins=30)
@@ -92,7 +92,7 @@ def get_singlets(sample_best_LL, loglik_threshold, umi_threshold, prefix=None):
 
     sample_best_LL['label'] = 'singlet'
     sample_best_LL['label'] = sample_best_LL.label.where(sample_best_LL.LogLikperUMI > loglik_threshold, 'doublet')
-    sample_best_LL['label'] = sample_best_LL.label.where(np.log10(sample_best_LL.num_umis) > umi_threshold, 'ambient')
+    sample_best_LL['label'] = sample_best_LL.label.where(np.log10(sample_best_LL.num_umis) > log10_umi_threshold, 'ambient')
     singlets = sample_best_LL.query('label == "singlet"')
 
     # save singlets df
@@ -138,9 +138,9 @@ def main():
     else:
         thresh = args.threshold
 
-    umi_threshold = threshold_otsu(np.log10(sample_best_LL.num_umis))
-    generate_loglik_per_umi_fig(sample_best_LL, thresh, umi_threshold, args.prefix)
-    get_singlets(sample_best_LL, thresh, umi_threshold, args.prefix)
+    log10_umi_threshold = threshold_otsu(np.log10(sample_best_LL.num_umis))
+    generate_loglik_per_umi_fig(sample_best_LL, thresh, log10_umi_threshold, args.prefix)
+    get_singlets(sample_best_LL, thresh, log10_umi_threshold, args.prefix)
 
 
 if __name__ == "__main__":

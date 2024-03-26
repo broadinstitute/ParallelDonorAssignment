@@ -6,10 +6,10 @@ workflows:
      filters:
         branches:
           - main
-          - bram-dev
           - dropulation_likelihoods
           - dropulation_likelihoods_update_snp_counts
           - simpler-combine
+          - dgtex
         tags:
           - /.*/
    - name: "cisvar"

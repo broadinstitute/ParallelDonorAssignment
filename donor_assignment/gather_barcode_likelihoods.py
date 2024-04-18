@@ -11,7 +11,11 @@ if __name__ == '__main__':
 
     total_df = 0
     for filepath in [ln.strip() for ln in open(barcode_likelihood_files)]:
-        new_table = pd.read_table(filepath, index_col=0)
+        try:
+            new_table = pd.read_table(filepath, index_col=0)
+        except pd.errors.EmptyDataError:
+            print(f'{filepath} was empty. Skipping.')
+            continue
         total_df = new_table.add(total_df, fill_value=0)
     total_df = total_df[total_df.num_umis >= min_umis]
     total_df.to_csv(output_file_path, sep="\t")

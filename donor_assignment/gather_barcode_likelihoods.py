@@ -14,7 +14,7 @@ if __name__ == '__main__':
         try:
             new_table = pd.read_table(filepath, index_col=0)
         except pd.errors.EmptyDataError:
-            print(f'{filepath} was empty. Skipping.')
+            print(f'{filepath} was empty. skipping')
             continue
         total_df = new_table.add(total_df, fill_value=0)
     total_df = total_df[total_df.num_umis >= min_umis]

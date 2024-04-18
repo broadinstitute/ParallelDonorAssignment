@@ -14,7 +14,7 @@ workflow donor_assign {
         Int min_UMIs = 25
         Float? singlet_threshold
         String docker_image = 'us.gcr.io/landerlab-atacseq-200218/donor_assign:0.20'
-        String git_branch = "simpler-combine"
+        String git_branch = "dgtex"
     }
 
     Int bam_split_size = floor(size(BAM, "GB") / num_splits)
